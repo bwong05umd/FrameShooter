@@ -125,6 +125,7 @@
             <option value="easy">Easy · 18f reaction</option>
             <option value="normal" selected>Normal · 12f reaction</option>
             <option value="hard">Hard · 7f reaction</option>
+            <option value="expert">Expert · 3f · dash+parry</option>
           </select>
         </div>
         <div class="row-sb" style="margin-bottom:8px">
@@ -166,7 +167,8 @@
         <h3>Controls</h3>
         <div class="keys">
           <span><kbd>A</kbd>/<kbd>D</kbd> · <kbd>◄</kbd><kbd>►</kbd></span><span>Shuffle left / right</span>
-          <span><kbd>J</kbd></span><span>Fire — 6 / 3 / 12</span>
+          <span><kbd>J</kbd> tap</span><span>Fire — 3 / 3 / 8</span>
+          <span><kbd>J</kbd> hold</span><span>Charge blast — release to fire (scales up to 2s, gold ring = full)</span>
           <span><kbd>L</kbd> · ◄◄ ►►</span><span>Dash i-frames — 2 / 8 / 10 · or double-tap a direction</span>
           <span><kbd>⇧</kbd> L-Shift</span><span>Parry — 1 / <b style="color:var(--startup)">2</b> / 22 · reflects incoming fire</span>
           <span><kbd>K</kbd></span><span>Trigger held power-up</span>
@@ -179,7 +181,7 @@
         <h3>Power-ups</h3>
         <div class="legend">
           <div class="row"><span class="sw" style="background:#ff9f1c"></span> <b>Triple / Shotgun</b> — 3 parallel shots, fires <b>2×</b></div>
-          <div class="row"><span class="sw" style="background:#cfe3ff"></span> <b>Sniper</b> — 1 big, fast, heavy round, fires <b>1×</b></div>
+          <div class="row"><span class="sw" style="background:#cfe3ff"></span> <b>Sniper</b> — 1 slim, fast, lethal round, fires <b>1×</b></div>
         </div>
         <div class="hint" style="text-align:left">A capsule streaks in from a side, then bounces around the center. <b>Shoot it</b> to collect (hold one at a time), then press <kbd>K</kbd> to load it into your gun.</div>
       </div>
@@ -194,8 +196,9 @@
           <div class="row"><span class="sw" style="background:#7fb4ff"></span> Hurtbox — can be hit here</div>
         </div>
         <div class="fd" style="margin-top:10px">
-          <b>Reading the matchup:</b> their Fire has <span class="y">6f</span> startup. Dash through the bullet, and they're stuck in <span class="p">12f recovery</span> — your free punish. Land a hit and they freeze in hit-stun (<b>26f</b>, decaying each hit) — enough to Fire again for a combo, but the freeze shrinks every hit so combos cap out instead of looping forever.
+          <b>Reading the matchup:</b> their Fire has <span class="y">3f</span> startup. Dash through the bullet, and they're stuck in <span class="p">8f recovery</span> — your free punish. Land a hit and they freeze in hit-stun (<b>26f</b>, decaying each hit) — enough to Fire again for a combo, but the freeze shrinks every hit so combos cap out instead of looping forever.
           <br><br><b style="color:#ff5b5b">⚡ Adrenaline:</b> below 45% HP your speed &amp; fire rate ramp up, reaching <b>1.5x</b> at 1% HP — a comeback window when you're nearly dead.
+          <br><br><b style="color:#ffd23f">⚡ Charge:</b> hold <kbd>J</kbd> to charge a blast. Gold ring = fully charged (2s cap). Release to fire — bigger, faster, harder-hitting the longer you charge. Getting hit won't cancel your charge.
         </div>
       </div>
     </div>
@@ -211,7 +214,6 @@ const cv = document.getElementById("game");
 const ctx = cv.getContext("2d");
 const W = cv.width, H = cv.height;
 
-/* fit to viewport height while keeping aspect */
 function fit(){
   const maxH = Math.min(window.innerHeight - 150, 760);
   const scale = Math.max(0.55, Math.min(1, maxH / H));
@@ -223,61 +225,70 @@ window.addEventListener("resize", fit); fit();
 /* ───────────────────────────── frame data ────────────────────────── */
 const STEP = 1000/60;
 const METER_MAX = 100;
-const HP_MAX = 100;
+const HP_MAX = 150;          // was 100 — 50% more health
 
 const MOVES = {
-  fire : { startup:6,  active:3,  recovery:12 },
-  dash : { startup:2,  active:8,  recovery:10 },   // active phase == invincible
-  parry: { startup:1,  active:2,  recovery:22 },   // the 2-frame window
+  fire : { startup:3,  active:3,  recovery:8 },    // was 6/3/12 — snappier feel
+  dash : { startup:2,  active:8,  recovery:10 },
+  parry: { startup:1,  active:2,  recovery:22 },
   beam : { startup:30, active:40, recovery:25, cost:METER_MAX },
 };
 const total = m => m.startup + m.active + m.recovery;
 
-const FW = 34, FH = 26;          // fighter body (hurtbox)
-const WALK = 3.2;
+const FW = 34, FH = 26;
+const WALK = 4.0;            // was 3.2 — slightly faster movement
 const BULLET_V = 8;
 const BW = 9, BH = 16;
-const DASH_V = 7;                // px/frame during dash active
-const BEAM_HW = 22;              // beam half-width
-const HITSTUN = 26;           // freeze on a clean hit — long enough to confirm a combo
-const HITSTUN_DECAY = 6;      // each extra hit in a combo freezes for less...
-const HITSTUN_MIN = 8;        // ...down to this floor, which caps combos & kills infinites
-const PUSH = 10;              // knock the defender off your firing column on each hit
+const DASH_V = 7;
+const BEAM_HW = 22;
+const HITSTUN = 26;
+const HITSTUN_DECAY = 6;
+const HITSTUN_MIN = 8;
+const PUSH = 10;
 const DMG_SHOT = 9;
-const DMG_PARRY = 14;            // reflected shot hits harder
+const DMG_PARRY = 14;
 const DMG_BEAM_TICK = 3;
-const BEAM_TICK = 6;            // beam damages every N frames
-const METER_HIT = 12, METER_PARRY = 5;    // a parry reflects + gives a small meter trickle
-const DASH_TAP_WIN = 14;        // double-tap a direction within this many frames to dash it
-const ADR_HP_HI = 45;           // adrenaline starts below this HP%
-const ADR_HP_LO = 1;            // ...and maxes out here
-const ADR_MAX = 1.5;            // 1.5x speed + fire rate at 1% HP
+const BEAM_TICK = 6;
+const METER_HIT = 12, METER_PARRY = 5;
+const DASH_TAP_WIN = 14;
+const ADR_HP_HI = 45;
+const ADR_HP_LO = 1;
+const ADR_MAX = 1.5;
+
+/* charge shot */
+const CHARGE_FRAMES_MAX = 120;   // 2 seconds at 60fps
+const DMG_CHARGE_MAX = 72;       // max damage at full charge
+const BLAST_W_MAX = 26;          // max bullet width at full charge
+const BLAST_H_MAX = 40;          // max bullet height at full charge
+const BLAST_V_MAX = 15;          // max bullet speed at full charge
+const CHARGE_THRESHOLD = 5;      // frames held before it counts as a charge (not a tap)
+const CHARGE_RING_R = 24;        // radius of the charge indicator ring
 
 /* power-ups */
-const PU_R = 13;                // half-size of the floating capsule
-const PU_ENTRY_VX = 7;          // fast entry so the sides can't be camped
-const PU_BOUNCE_VX = 4;         // speed once it starts bouncing
+const PU_R = 13;
+const PU_ENTRY_VX = 7;
+const PU_BOUNCE_VX = 4;
 const PU_BOUNCE_VY = 2.6;
-const PU_BAND_TOP = 150, PU_BAND_BOT = H-150;   // central band it bounces inside
-const PU_SPAWN_MIN = 360, PU_SPAWN_MAX = 540;   // frames between spawns
-/* triple (shotgun): 3 parallel shots, 2 volleys */
+const PU_BAND_TOP = 150, PU_BAND_BOT = H-150;
+const PU_SPAWN_MIN = 360, PU_SPAWN_MAX = 540;
 const TRIPLE_OFFSET = 19;
-/* sniper: 1 big, fast, heavy bullet */
-const SNIPER_V = 13;
-const SNIPER_W = 18, SNIPER_H = 30;
-const DMG_SNIPER = 22;
+const SNIPER_V = 22;             // was 13 — much faster
+const SNIPER_W = 5;              // was 18 — slim like a real sniper round
+const SNIPER_H = 36;             // was 30 — slightly longer
+const DMG_SNIPER = 26;           // was 22
 const PU_COLORS = { triple:"#ff9f1c", sniper:"#cfe3ff" };
 
 /* ───────────────────────────── state ─────────────────────────────── */
-let mode = "versus";            // 'versus' | 'training'
-let showHB = false;             // hitbox overlay
+let mode = "versus";
+let showHB = false;
 let paused = false;
 let stepOnce = false;
 let frameCount = 0;
-let winner = null;              // null | 'bottom' | 'top'
+let winner = null;
 let hitFlash = 0, shake = 0;
 let reactionDelay = 12, parryChance = 0.05, cpuAggro = 0.6;
-let cpuStyle = "balanced";      // 'balanced' (evades) | 'technical' (parry + dash)
+let cpuStyle = "balanced";
+let cpuExpert = false;           // expert difficulty flag
 let dummyMode = "stand";
 
 function mkFighter(side){
@@ -287,14 +298,16 @@ function mkFighter(side){
     y: side==="bottom" ? H-58 : 58,
     hp: HP_MAX,
     meter: 0,
-    action: null,        // {move, frame, spawned, dir}
+    action: null,
     hitstun: 0,
-    combo: 0,            // combo this fighter is dealing
+    combo: 0,
     aiCd: 0,
     flash: 0,
-    stored: null,        // collected power-up kind awaiting trigger ('triple'|'sniper'), max 1
-    charges: null,       // active gun mod after trigger: {kind, count}
-    puCd: 0,             // CPU power-up decision cooldown
+    stored: null,
+    charges: null,
+    puCd: 0,
+    chargeStart: null,       // frame when J was pressed down (human player only)
+    pendingChargeShot: null, // charge ratio 0-1, queued on key release, fires when free
   };
 }
 let player, opp, bullets, powerups, powerupTimer;
@@ -314,11 +327,11 @@ function reset(){
 }
 
 /* ───────────────────────────── input ─────────────────────────────── */
-const keys = new Set();           // held physical keys (for movement)
-const inputQueue = [];            // edge-triggered actions to consume next logic frame
-const lastTap = { left:-999, right:-999 }; // frame of last fresh press, for double-tap dash
+const keys = new Set();
+const inputQueue = [];
+const lastTap = { left:-999, right:-999 };
 const KMAP = { left:["arrowleft","a"], right:["arrowright","d"] };
-const ACT  = { j:"fire", l:"dash", i:"beam", k:"power" };  // L dash · K power-up · I beam · Shift parry
+const ACT  = { l:"dash", i:"beam", k:"power" };  // j handled separately for charge
 
 function isDown(name){ return KMAP[name].some(k => keys.has(k)); }
 
@@ -328,32 +341,48 @@ addEventListener("keydown", e => {
   if (e.repeat) return;
   keys.add(k);
 
-  // double-tap ◄ or ► within DASH_TAP_WIN frames => dash that direction
   let tapDir = KMAP.left.includes(k) ? "left" : KMAP.right.includes(k) ? "right" : null;
   if (tapDir){
     if (frameCount - lastTap[tapDir] <= DASH_TAP_WIN){
       inputQueue.push({ act:"dash", dir: tapDir === "left" ? -1 : 1 });
-      lastTap[tapDir] = -999;          // consume the pair; a 3rd tap starts fresh
+      lastTap[tapDir] = -999;
     } else {
       lastTap[tapDir] = frameCount;
     }
   }
 
-  // UI / training controls (act immediately, not queued)
   if (k === "r"){ reset(); return; }
   if (k === "h"){ toggleHB(); return; }
   if (k === "p"){ togglePause(); return; }
   if (k === "." ){ if (paused) stepOnce = true; return; }
 
-  // gameplay action edges (player)
   if (e.code === "ShiftLeft"){ inputQueue.push("parry"); return; }
+
+  // J key: begin charging (fire on release)
+  if (k === "j"){
+    if (player) player.chargeStart = frameCount;
+    return;
+  }
+
   if (ACT[k]) inputQueue.push(ACT[k]);
 });
-addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+
+addEventListener("keyup", e => {
+  const k = e.key.toLowerCase();
+  keys.delete(k);
+  // J key released: compute charge ratio and store as pending shot
+  if (k === "j" && player && player.chargeStart !== null){
+    const frames = frameCount - player.chargeStart;
+    const ratio = Math.min(frames, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
+    player.pendingChargeShot = ratio;
+    player.chargeStart = null;
+  }
+});
+
 cv.addEventListener("mousedown", () => cv.focus && cv.focus());
 cv.tabIndex = 0;
 
-/* ───────────────────────────── audio (lazy, safe) ────────────────── */
+/* ───────────────────────────── audio ─────────────────────────────── */
 let actx = null, sound = true;
 function beep(freq, dur, type="square", vol=0.05){
   if (!sound) return;
@@ -386,17 +415,14 @@ const rand = (a,b) => a + Math.random()*(b-a);
 const overlap = (ax,ay,aw,ah,bx,by,bw,bh) =>
   Math.abs(ax-bx) < (aw+bw)/2 && Math.abs(ay-by) < (ah+bh)/2;
 
-/* adrenaline: ramps from 1.0x at 45% HP to 1.5x at 1% HP (linear) */
 function adrenalineMult(f){
   if (f.hp >= ADR_HP_HI) return 1;
   const hp = Math.max(ADR_HP_LO, f.hp);
-  const t = (ADR_HP_HI - hp) / (ADR_HP_HI - ADR_HP_LO);   // 0..1
+  const t = (ADR_HP_HI - hp) / (ADR_HP_HI - ADR_HP_LO);
   return 1 + (ADR_MAX - 1) * t;
 }
 
-/* try to begin an action from an intents object */
 function tryStart(f, i){
-  // priority: beam > parry > dash > fire
   let move = null;
   if (i.beam && f.meter >= MOVES.beam.cost) move = "beam";
   else if (i.parry) move = "parry";
@@ -407,10 +433,9 @@ function tryStart(f, i){
   let dir = 0;
   if (move === "dash"){
     if (f.isCPU){ dir = i.dashDir || 0; }
-    else if (i.dashDir != null){ dir = i.dashDir; }   // double-tap dash sets direction
+    else if (i.dashDir != null){ dir = i.dashDir; }
     else { dir = (isDown("left")?-1:0) + (isDown("right")?1:0); }
   }
-  // snapshot this move's frame data into the action; fire speeds up under adrenaline
   let data = MOVES[move];
   if (move === "fire"){
     const m = adrenalineMult(f);
@@ -422,9 +447,11 @@ function tryStart(f, i){
       };
     }
   }
-  f.action = { move, data, frame:0, spawned:false, dir };
+  // store charge level on the action so spawnBullet can use it
+  const chargeLevel = (move === "fire") ? (i.chargeLevel || 0) : 0;
+  f.action = { move, data, frame:0, spawned:false, dir, chargeLevel };
   if (move === "beam") f.meter -= MOVES.beam.cost;
-  if (move === "fire")  beep(620, .05, "square", .04);
+  if (move === "fire")  beep(chargeLevel > CHARGE_THRESHOLD/CHARGE_FRAMES_MAX ? 280 : 620, .05, "square", .04);
   if (move === "dash")  beep(180, .07, "sawtooth", .05);
   if (move === "parry") beep(900, .04, "triangle", .04);
   if (move === "beam")  beep(110, .25, "sawtooth", .06);
@@ -432,46 +459,71 @@ function tryStart(f, i){
 }
 
 function applyIntents(f, i){
-  if (f.hitstun > 0 || f.action) return;     // locked: no walk, no new action
-  if (tryStart(f, i)) return;                // committed to a move
-  // free: walk
+  if (f.hitstun > 0 || f.action) return;
+  if (tryStart(f, i)){
+    // clear pending charge once the fire action successfully starts
+    if (!f.isCPU && i.fire) f.pendingChargeShot = null;
+    return;
+  }
   let dir = 0;
   if (f.isCPU){ dir = (i.left?-1:0) + (i.right?1:0); }
   else { dir = (isDown("left")?-1:0) + (isDown("right")?1:0); }
   if (dir) f.x = clampX(f.x + dir*WALK*adrenalineMult(f));
 }
 
-function spawnBullet(f){
+function spawnBullet(f, chargeLevel){
+  chargeLevel = chargeLevel || 0;
   const up = f.side === "bottom";
-  const baseY = up ? f.y - FH/2 - BH/2 : f.y + FH/2 + BH/2;
-  const vy = up ? -BULLET_V : BULLET_V;
   const mod = f.charges;
 
+  // power-up shots take priority over charge
   if (mod && mod.count > 0 && mod.kind === "triple"){
-    // shotgun: three parallel shots, same angle, offset left/right of center
+    const baseY = up ? f.y - FH/2 - BH/2 : f.y + FH/2 + BH/2;
+    const vy = up ? -BULLET_V : BULLET_V;
     for (const dx of [-TRIPLE_OFFSET, 0, TRIPLE_OFFSET]){
       bullets.push({ type:"shot", owner:f.side, x:clampX(f.x+dx), y:baseY, vy,
         w:BW, h:BH, born:frameCount, dead:false, dmg:DMG_SHOT, variant:"triple" });
     }
     beep(700,.05,"square",.045);
-  } else if (mod && mod.count > 0 && mod.kind === "sniper"){
-    // sniper: one big, fast, heavy bullet
+    mod.count--;
+    if (mod.count <= 0) f.charges = null;
+    return;
+  }
+  if (mod && mod.count > 0 && mod.kind === "sniper"){
     const sy = up ? f.y - FH/2 - SNIPER_H/2 : f.y + FH/2 + SNIPER_H/2;
     const svy = up ? -SNIPER_V : SNIPER_V;
     bullets.push({ type:"shot", owner:f.side, x:f.x, y:sy, vy:svy,
       w:SNIPER_W, h:SNIPER_H, born:frameCount, dead:false, dmg:DMG_SNIPER, variant:"sniper" });
     beep(420,.09,"sawtooth",.05);
-  } else {
-    bullets.push({ type:"shot", owner:f.side, x:f.x, y:baseY, vy,
-      w:BW, h:BH, born:frameCount, dead:false, dmg:DMG_SHOT, variant:"normal" });
-    return; // no charge consumed
+    mod.count--;
+    if (mod.count <= 0) f.charges = null;
+    return;
   }
-  mod.count--;
-  if (mod.count <= 0) f.charges = null;
+
+  // charged blast (hold threshold exceeded)
+  if (chargeLevel * CHARGE_FRAMES_MAX >= CHARGE_THRESHOLD){
+    const t = chargeLevel;
+    const bw = BW + (BLAST_W_MAX - BW) * t;
+    const bh = BH + (BLAST_H_MAX - BH) * t;
+    const spd = BULLET_V + (BLAST_V_MAX - BULLET_V) * t;
+    const vy = up ? -spd : spd;
+    const dmg = Math.round(DMG_SHOT + (DMG_CHARGE_MAX - DMG_SHOT) * t);
+    const baseY = up ? f.y - FH/2 - bh/2 : f.y + FH/2 + bh/2;
+    bullets.push({ type:"shot", owner:f.side, x:f.x, y:baseY, vy,
+      w:bw, h:bh, born:frameCount, dead:false, dmg:dmg, variant:"charge", chargeLevel:t });
+    beep(200 + t*220, 0.08 + t*0.12, "sawtooth", 0.06 + t*0.02);
+    return;
+  }
+
+  // normal shot
+  const baseY = up ? f.y - FH/2 - BH/2 : f.y + FH/2 + BH/2;
+  const vy = up ? -BULLET_V : BULLET_V;
+  bullets.push({ type:"shot", owner:f.side, x:f.x, y:baseY, vy,
+    w:BW, h:BH, born:frameCount, dead:false, dmg:DMG_SHOT, variant:"normal" });
 }
 
 function triggerPowerup(f){
-  if (winner || !f.stored || f.charges) return;     // need one stored, not mid-use
+  if (winner || !f.stored || f.charges) return;
   if (f.stored === "triple") f.charges = { kind:"triple", count:2 };
   else if (f.stored === "sniper") f.charges = { kind:"sniper", count:1 };
   f.stored = null;
@@ -501,7 +553,6 @@ function updatePowerups(){
   for (const p of powerups){
     p.x += p.vx; p.y += p.vy; p.spin += 0.06;
     if (p.state === "entering"){
-      // once it crosses center, it stops being a fast flyby and starts bouncing
       if ((p.vx > 0 && p.x >= W/2) || (p.vx < 0 && p.x <= W/2)){
         p.state = "bouncing";
         p.vx = Math.sign(p.vx) * PU_BOUNCE_VX;
@@ -516,9 +567,9 @@ function updatePowerups(){
   }
   powerups = powerups.filter(p => !p.dead);
 }
+
 function spawnBeam(f){
   const up = f.side === "bottom";
-  // column from the fighter's muzzle to the far wall
   const muzzle = up ? f.y - FH/2 : f.y + FH/2;
   const far = up ? 0 : H;
   bullets.push({
@@ -529,17 +580,16 @@ function spawnBeam(f){
   shake = 8;
 }
 
-/* advance one fighter's action timeline (effects + frame counter) */
 function advanceFighter(f){
   if (f.hitstun > 0){
     f.hitstun--;
-    if (f.hitstun === 0) f.combo = 0; // their combo on us ends when we recover
+    if (f.hitstun === 0) f.combo = 0;
     return;
   }
   if (!f.action) return;
   const ph = phaseOf(f), fr = f.action.frame;
   if (f.action.move === "fire" && fr === f.action.data.startup && !f.action.spawned){
-    spawnBullet(f); f.action.spawned = true;
+    spawnBullet(f, f.action.chargeLevel || 0); f.action.spawned = true;
   }
   if (f.action.move === "beam" && fr === f.action.data.startup && !f.action.spawned){
     spawnBeam(f); f.action.spawned = true;
@@ -553,15 +603,15 @@ function advanceFighter(f){
 
 function damage(target, attacker, amount, kind){
   if (winner) return;
-  // combo bookkeeping: continuing while already in hitstun
   if (target.hitstun > 0) attacker.combo++;
   else attacker.combo = 1;
   target.hp = Math.max(0, target.hp - amount);
   target.hitstun = Math.max(HITSTUN_MIN, HITSTUN - (attacker.combo - 1) * HITSTUN_DECAY);
-  // knock them off the shared column so a spammer has to re-aim each hit
   let pd = Math.sign(target.x - attacker.x); if (pd === 0) pd = (attacker.combo % 2 ? 1 : -1);
   target.x = clampX(target.x + pd * PUSH);
-  target.action = null;          // hit interrupts whatever they were doing
+  target.action = null;
+  // NOTE: intentionally do NOT clear target.chargeStart or target.pendingChargeShot
+  // so that getting hit while charging doesn't cancel the charge
   target.flash = 6;
   attacker.meter = Math.min(METER_MAX, attacker.meter + (kind==="parry"?METER_PARRY:METER_HIT));
   hitFlash = 5; shake = Math.min(12, shake + (kind==="beam"?2:5));
@@ -576,48 +626,44 @@ function updateBullets(){
     if (b.type === "beam"){
       b.life--; b.tick--;
       if (b.life <= 0){ b.dead = true; continue; }
-      // beam: only dash i-frames pass through; cannot be parried
       if (overlap(b.x,b.y,b.w,b.h, target.x,target.y,FW,FH) && !isInvuln(target)){
         if (b.tick <= 0){ damage(target, b.owner==="bottom"?player:opp, DMG_BEAM_TICK, "beam"); b.tick = BEAM_TICK; }
       }
       continue;
     }
 
-    // normal shot
     b.y += b.vy;
     if (b.y < -20 || b.y > H+20){ b.dead = true; continue; }
 
-    // collect a power-up? (only if owner can hold one — max one in possession)
     const owner = (b.owner === "bottom") ? player : opp;
     let collected = false;
     for (const p of powerups){
       if (p.dead) continue;
       if (!overlap(b.x,b.y,b.w,b.h, p.x,p.y, PU_R*2, PU_R*2)) continue;
-      if (!owner.stored && !owner.charges){     // eligible: not already holding one
+      if (!owner.stored && !owner.charges){
         owner.stored = p.kind; p.dead = true; b.dead = true;
         owner.flash = 6; hitFlash = 4;
         beep(1300,.06,"square",.05);
         collected = true;
       }
-      break; // bullet interacts with at most one power-up
+      break;
     }
     if (collected) continue;
 
     if (!overlap(b.x,b.y,b.w,b.h, target.x,target.y,FW,FH)) continue;
 
-    if (isInvuln(target)) continue;                  // i-frames: pass through
-    if (isParrying(target)){                          // reflect!
+    if (isInvuln(target)) continue;
+    if (isParrying(target)){
       b.owner = target.side;
       b.vy = -b.vy * 1.4;
       b.born = frameCount;
       b.parried = true;
-      b.dmg = Math.round((b.dmg || DMG_SHOT) * 1.5);  // reflected shots hit harder
+      b.dmg = Math.round((b.dmg || DMG_SHOT) * 1.5);
       target.meter = Math.min(METER_MAX, target.meter + METER_PARRY);
       target.flash = 6; hitFlash = 6; shake = 7;
       beep(1500,.05,"triangle",.06);
       continue;
     }
-    // clean hit
     const attacker = (b.owner === "bottom") ? player : opp;
     damage(target, attacker, b.dmg || DMG_SHOT, "shot");
     b.dead = true;
@@ -627,46 +673,56 @@ function updateBullets(){
 
 /* ───────────────────────────── AI ────────────────────────────────── */
 function cpuThink(){
-  const i = {left:false,right:false,fire:false,dash:false,parry:false,beam:false,power:false,dashDir:0};
+  const i = {left:false,right:false,fire:false,dash:false,parry:false,beam:false,power:false,dashDir:0,chargeLevel:0};
   if (opp.hitstun > 0 || opp.action || winner) return i;
 
-  // trigger a stored power-up so the gun mod is ready before firing
   if (opp.stored && !opp.charges){ i.power = true; return i; }
 
-  // beam threat → must dash through
   const beam = bullets.find(b => b.owner==="bottom" && b.type==="beam"
             && Math.abs(b.x-opp.x) < (BEAM_HW+FW/2));
   if (beam){
     i.dash = true; i.dashDir = (opp.x > W/2) ? -1 : 1; return i;
   }
 
-  // perceive incoming shots older than reaction delay; compute time-to-impact
+  // expert: react to player charging — dash away as charge builds
+  if (cpuExpert && player.chargeStart !== null){
+    const cT = Math.min(frameCount - player.chargeStart, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
+    if (cT > 0.45 && Math.random() < (0.25 + cT * 0.5)){
+      i.dash = true;
+      i.dashDir = (player.x <= opp.x) ? 1 : -1;
+      return i;
+    }
+  }
+  // expert: react to pending charge blast queued on player
+  if (cpuExpert && player.pendingChargeShot !== null && player.pendingChargeShot > 0.4 && Math.random() < 0.5){
+    i.dash = true; i.dashDir = (player.x <= opp.x) ? 1 : -1; return i;
+  }
+
   let threat = null, bestT = Infinity;
   for (const b of bullets){
     if (b.owner !== "bottom" || b.type !== "shot" || b.vy <= 0) continue;
-    if (frameCount - b.born < reactionDelay) continue;       // can't react yet
-    if (Math.abs(b.x - opp.x) > (FW/2 + b.w/2 + 4)) continue; // won't line up
+    if (frameCount - b.born < reactionDelay) continue;
+    if (Math.abs(b.x - opp.x) > (FW/2 + b.w/2 + 4)) continue;
     const t = (opp.y - b.y) / b.vy;
     if (t >= 0 && t < bestT){ bestT = t; threat = b; }
   }
   if (threat){
-    const tech = cpuStyle === "technical";
-    // pressing parry now lands its 2f active window on a bullet arriving in ~1-3 frames
-    const inParryWindow = bestT >= 1 && bestT <= 3.4;
-    if (inParryWindow && Math.random() < (tech ? 0.75 : parryChance)){
+    const tech = cpuStyle === "technical" || cpuExpert;
+    const parryWindowMax = cpuExpert ? 6 : (tech ? 4.5 : 3.4);
+    const inParryWindow = bestT >= 1 && bestT <= parryWindowMax;
+    const pChance = cpuExpert ? 0.92 : (tech ? 0.75 : parryChance);
+    if (inParryWindow && Math.random() < pChance){
       i.parry = true; return i;
     }
-    // dash out: technical waits later (to set up the parry), balanced bails early
-    const dashThresh = tech ? 9 : 16;
+    const dashThresh = cpuExpert ? 18 : (tech ? 9 : 16);
     if (bestT <= dashThresh){
       i.dash = true;
-      i.dashDir = (threat.x <= opp.x) ? 1 : -1;             // slide away from it
+      i.dashDir = (threat.x <= opp.x) ? 1 : -1;
       if (opp.x + i.dashDir*45 > W-FW/2) i.dashDir = -1;
       if (opp.x + i.dashDir*45 < FW/2)   i.dashDir = 1;
       return i;
     }
-    // technical: hold for the parry, with the occasional bait dash-dance
-    if (tech){
+    if (tech && !cpuExpert){
       if (Math.random() < 0.04){ i.dash = true; i.dashDir = (opp.x < W/2)?1:-1; return i; }
       return i;
     }
@@ -675,16 +731,21 @@ function cpuThink(){
   if (opp.aiCd > 0) opp.aiCd--;
   if (opp.puCd > 0) opp.puCd--;
 
-  // go for a floating power-up if not already holding one
+  // expert: frequent proactive dash-dancing
+  if (cpuExpert && opp.aiCd <= 0 && Math.random() < 0.022){
+    i.dash = true;
+    i.dashDir = (player.x < opp.x) ? -1 : 1;
+    opp.aiCd = Math.round(rand(10, 22));
+    return i;
+  }
+
   if (!opp.stored && !opp.charges && powerups.length){
     const p = powerups[0];
     const dx = p.x - opp.x;
     if (Math.abs(dx) > 10){ if (dx < 0) i.left = true; else i.right = true; return i; }
-    // lined up under it — shoot to collect
     if (opp.puCd <= 0){ i.fire = true; opp.puCd = Math.round(rand(10,20)); return i; }
   }
 
-  // beam when full and player can't punish (in recovery / whiffing) and lined up
   if (opp.meter >= METER_MAX){
     const pRec = player.action && phaseOf(player) === "recovery";
     const lined = Math.abs(opp.x - player.x) < 22;
@@ -696,14 +757,20 @@ function cpuThink(){
   if (lined){
     const pInv = isInvuln(player);
     if (opp.aiCd <= 0 && !pInv && Math.random() < cpuAggro){
-      i.fire = true; opp.aiCd = Math.round(rand(16,34)); return i;
+      i.fire = true; opp.aiCd = Math.round(rand(cpuExpert ? 8 : 16, cpuExpert ? 22 : 34)); return i;
     }
-    if (Math.random() < 0.02){ if (Math.random()<0.5) i.left=true; else i.right=true; }
-    if (cpuStyle==="technical" && Math.random() < 0.015){
+    if (Math.random() < (cpuExpert ? 0.04 : 0.02)){ if (Math.random()<0.5) i.left=true; else i.right=true; }
+    if ((cpuStyle==="technical" || cpuExpert) && Math.random() < (cpuExpert ? 0.03 : 0.015)){
       i.dash = true; i.dashDir = (player.x < opp.x)?-1:1; return i;
     }
   } else {
     if (dx < 0) i.left = true; else i.right = true;
+    // expert: occasionally dash toward player to close gap
+    if (cpuExpert && Math.abs(dx) > 40 && opp.aiCd <= 0 && Math.random() < 0.05){
+      i.dash = true; i.dashDir = Math.sign(dx);
+      opp.aiCd = Math.round(rand(12, 24));
+      return i;
+    }
   }
   return i;
 }
@@ -724,7 +791,15 @@ function dummyThink(){
 /* ───────────────────────────── logic step ─────────────────────────── */
 function gatherPlayer(){
   const i = {left:isDown("left"), right:isDown("right"),
-             fire:false, dash:false, parry:false, beam:false, power:false, dashDir:null};
+             fire:false, dash:false, parry:false, beam:false, power:false,
+             dashDir:null, chargeLevel:0};
+
+  // carry pending charge shot forward until the player is free to fire
+  if (player.pendingChargeShot !== null){
+    i.fire = true;
+    i.chargeLevel = player.pendingChargeShot;
+  }
+
   while (inputQueue.length){
     const a = inputQueue.shift();
     if (typeof a === "string") i[a] = true;
@@ -778,28 +853,23 @@ function drawFighter(f){
   }
   const x = f.x - FW/2, y = f.y - FH/2;
 
-  // glow on active / invuln
   ctx.save();
   if (f.action && (ph==="active") || isInvuln(f) || isParrying(f)){
     ctx.shadowColor = col; ctx.shadowBlur = 18;
   } else { ctx.shadowColor = base; ctx.shadowBlur = 8; }
-  // body
   ctx.fillStyle = col;
   roundRect(x,y,FW,FH,5); ctx.fill();
   ctx.restore();
 
-  // inner core
   ctx.fillStyle = "rgba(0,0,0,.45)";
   roundRect(x+4,y+4,FW-8,FH-8,3); ctx.fill();
 
-  // muzzle indicator pointing at the enemy
   const mw = 12, mh = 5;
   ctx.fillStyle = col;
   if (f.side==="bottom") roundRect(f.x-mw/2, y-mh, mw, mh, 2);
   else roundRect(f.x-mw/2, y+FH, mw, mh, 2);
   ctx.fill();
 
-  // i-frame shimmer
   if (isInvuln(f)){
     ctx.strokeStyle = "rgba(61,242,122,.9)"; ctx.lineWidth = 2;
     const pad = 3 + (frameCount%6);
@@ -814,21 +884,53 @@ function drawFighter(f){
     const a = 0.22 + 0.18*Math.sin(frameCount*0.4) + (adr-1)*0.5;
     ctx.strokeStyle = `rgba(255,64,64,${Math.min(0.8,a)})`;
     ctx.lineWidth = 2;
-    const p = 5 + (adr-1)*18;          // ring grows as HP drops
+    const p = 5 + (adr-1)*18;
     roundRect(x-p,y-p,FW+p*2,FH+p*2,9); ctx.stroke();
+  }
+
+  // charge indicator ring (visible to both players as a warning)
+  const showCharge = f.chargeStart !== null || f.pendingChargeShot !== null;
+  if (showCharge){
+    const t = f.chargeStart !== null
+      ? Math.min(frameCount - f.chargeStart, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX
+      : f.pendingChargeShot;
+    const full = t >= 1.0;
+    ctx.save();
+    if (full){
+      // fully charged: bright pulsing gold ring — warns the opponent
+      const pulse = 0.75 + 0.25 * Math.sin(frameCount * 0.55);
+      ctx.strokeStyle = `rgba(255,220,55,${pulse})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "#ffd23f";
+      ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.arc(f.x, f.y, CHARGE_RING_R, 0, Math.PI*2); ctx.stroke();
+      // outer halo
+      ctx.strokeStyle = `rgba(255,200,30,${pulse * 0.35})`;
+      ctx.lineWidth = 7; ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(f.x, f.y, CHARGE_RING_R + 5, 0, Math.PI*2); ctx.stroke();
+    } else {
+      // filling arc
+      ctx.strokeStyle = `rgba(255,160,20,${0.35 + 0.55*t})`;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      if (f.pendingChargeShot !== null) ctx.setLineDash([3,4]);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, CHARGE_RING_R, -Math.PI/2, -Math.PI/2 + t * Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
   }
 }
 
 function drawHitboxes(f){
   const x = f.x - FW/2, y = f.y - FH/2;
-  // hurtbox
   const safe = isInvuln(f);
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = safe ? "rgba(61,242,122,.95)" : "rgba(127,180,255,.9)";
   ctx.setLineDash([4,3]);
   ctx.strokeRect(x, y, FW, FH);
   ctx.setLineDash([]);
-  // label
   ctx.font = "9px monospace"; ctx.textAlign = "center";
   ctx.fillStyle = safe ? getCss("--invuln") : "#7fb4ff";
   ctx.fillText(safe ? "INVULN" : "HURT", f.x, f.side==="bottom" ? y-4 : y+FH+11);
@@ -852,14 +954,35 @@ function drawBullet(b){
     }
     return;
   }
+
+  // charged blast
+  if (b.variant === "charge"){
+    const t = b.chargeLevel;
+    const c = b.owner==="bottom" ? getCss("--p1") : getCss("--p2");
+    ctx.save();
+    ctx.shadowColor = c; ctx.shadowBlur = 10 + 22*t;
+    ctx.fillStyle = c;
+    roundRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h, 3 + t*5); ctx.fill();
+    // bright core
+    const coreW = Math.max(3, b.w * 0.4);
+    ctx.fillStyle = `rgba(255,255,255,${0.45 + 0.45*t})`;
+    roundRect(b.x-coreW/2, b.y-b.h/2+2, coreW, b.h-4, 3); ctx.fill();
+    ctx.restore();
+    if (showHB){
+      ctx.strokeStyle = "rgba(255,75,62,.95)"; ctx.lineWidth=1.2; ctx.setLineDash([4,2]);
+      ctx.strokeRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h); ctx.setLineDash([]);
+    }
+    return;
+  }
+
   const c = (b.owner==="bottom") ? getCss("--p1") : getCss("--p2");
   ctx.save();
   ctx.shadowColor = b.parried ? "#fff" : c; ctx.shadowBlur = b.variant==="sniper" ? 18 : 12;
   ctx.fillStyle = b.parried ? "#fff" : c;
   roundRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h, 3); ctx.fill();
-  if (b.variant === "sniper"){            // bright tracer core to read as a sniper round
+  if (b.variant === "sniper"){
     ctx.fillStyle = "rgba(255,255,255,.9)";
-    roundRect(b.x-2, b.y-b.h/2+2, 4, b.h-4, 2); ctx.fill();
+    roundRect(b.x-1, b.y-b.h/2+2, 2, b.h-4, 1); ctx.fill();
   }
   ctx.restore();
   if (showHB){
@@ -874,7 +997,6 @@ function drawPowerups(){
     const r = PU_R;
     ctx.save();
     ctx.translate(p.x, p.y);
-    // glow halo
     ctx.shadowColor = col; ctx.shadowBlur = 16;
     ctx.fillStyle = "rgba(8,11,18,.92)";
     ctx.strokeStyle = col; ctx.lineWidth = 2;
@@ -882,10 +1004,8 @@ function drawPowerups(){
     ctx.shadowBlur = 0;
     ctx.fillStyle = col;
     if (p.kind === "triple"){
-      // three little bars = shotgun spread
       for (const dx of [-6,0,6]){ roundRect(dx-1.5,-6,3,12,1.5); ctx.fill(); }
     } else {
-      // crosshair = sniper
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0,0,5.5,0,Math.PI*2); ctx.stroke();
       ctx.beginPath();
@@ -900,13 +1020,11 @@ function drawPowerups(){
 }
 
 function drawHUD(){
-  // top opponent bar / bottom player bar
   function bar(x,y,w,hp,meter,color){
     ctx.fillStyle = "rgba(255,255,255,.08)";
     roundRect(x,y,w,7,3); ctx.fill();
     ctx.fillStyle = color;
     roundRect(x,y,w*(hp/HP_MAX),7,3); ctx.fill();
-    // meter
     ctx.fillStyle = "rgba(255,255,255,.08)";
     roundRect(x,y+10,w,4,2); ctx.fill();
     const full = meter>=METER_MAX;
@@ -947,17 +1065,14 @@ function stateLabel(f){
 
 function drawTelemetry(){
   ctx.textAlign = "left"; ctx.font = "10px monospace";
-  // opponent (top)
   ctx.fillStyle = getCss("--p2");
   ctx.fillText(`P2 ${stateLabel(opp)}`, 16, 40);
   if (adrenalineMult(opp) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡${(adrenalineMult(opp)).toFixed(2)}x`, 16, 53); }
   if (opp.combo>1){ ctx.fillStyle="#ffd23f"; ctx.fillText(`${opp.combo} COMBO`, W-70, 40); }
-  // player (bottom)
   ctx.fillStyle = getCss("--p1");
   ctx.fillText(`P1 ${stateLabel(player)}`, 16, H-32);
   if (adrenalineMult(player) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡ ADRENALINE ${(adrenalineMult(player)).toFixed(2)}x`, 16, H-19); }
   if (player.combo>1){ ctx.fillStyle="#ffd23f"; ctx.textAlign="right"; ctx.fillText(`${player.combo} COMBO`, W-16, H-32); ctx.textAlign="left"; }
-  // frame counter (training)
   if (mode==="training"){
     ctx.fillStyle = "#5e6c85"; ctx.textAlign="center";
     ctx.fillText(`FRAME ${frameCount}`, W/2, 40);
@@ -966,14 +1081,11 @@ function drawTelemetry(){
 
 function drawBackground(){
   ctx.fillStyle = "#04060b"; ctx.fillRect(0,0,W,H);
-  // grid
   ctx.strokeStyle = "rgba(50,70,110,.16)"; ctx.lineWidth = 1;
   for (let x=0;x<=W;x+=22){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
   for (let y=0;y<=H;y+=22){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-  // center line
   ctx.strokeStyle = "rgba(120,140,180,.18)"; ctx.setLineDash([8,8]);
   ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke(); ctx.setLineDash([]);
-  // zone tints
   const g1 = ctx.createLinearGradient(0,H,0,H-150);
   g1.addColorStop(0,"rgba(33,230,193,.07)"); g1.addColorStop(1,"rgba(33,230,193,0)");
   ctx.fillStyle=g1; ctx.fillRect(0,H-150,W,150);
@@ -995,13 +1107,11 @@ function render(){
   drawTelemetry();
   ctx.restore();
 
-  // hit flash
   if (hitFlash > 0){
     ctx.fillStyle = `rgba(255,255,255,${0.06*hitFlash})`;
     ctx.fillRect(0,0,W,H); hitFlash -= 0.6;
   }
 
-  // paused overlay
   if (paused && !winner){
     ctx.fillStyle = "rgba(4,6,11,.55)"; ctx.fillRect(0,0,W,H);
     ctx.fillStyle = "#ffd23f"; ctx.textAlign="center"; ctx.font="bold 18px monospace";
@@ -1010,7 +1120,6 @@ function render(){
     ctx.fillText("press  .  to step one frame", W/2, H/2+14);
   }
 
-  // winner overlay
   if (winner){
     ctx.fillStyle = "rgba(4,6,11,.7)"; ctx.fillRect(0,0,W,H);
     ctx.textAlign="center";
@@ -1050,7 +1159,7 @@ function syncButtons(){
 }
 function setMode(m){
   mode = m;
-  showHB = (m === "training");      // hitboxes on by default in the lab
+  showHB = (m === "training");
   reset();
 }
 function toggleHB(){ showHB = !showHB; syncButtons(); }
@@ -1065,9 +1174,11 @@ $("hitbox").onclick  = () => toggleHB();
 $("sound").onclick   = () => { sound = !sound; if (sound && !actx) beep(800,.03); syncButtons(); };
 $("diff").onchange = e => {
   const v = e.target.value;
-  if (v==="easy"){ reactionDelay=18; parryChance=0.02; cpuAggro=0.45; }
-  else if (v==="hard"){ reactionDelay=7; parryChance=0.12; cpuAggro=0.8; }
-  else { reactionDelay=12; parryChance=0.05; cpuAggro=0.6; }
+  cpuExpert = false;
+  if (v==="easy"){   reactionDelay=18; parryChance=0.02; cpuAggro=0.45; }
+  else if (v==="hard"){   reactionDelay=7;  parryChance=0.12; cpuAggro=0.8; }
+  else if (v==="expert"){ reactionDelay=3;  parryChance=0.88; cpuAggro=0.95; cpuExpert=true; }
+  else {                  reactionDelay=12; parryChance=0.05; cpuAggro=0.6; }
 };
 $("dummy").onchange = e => { dummyMode = e.target.value; };
 $("cpuStyle").onchange = e => { cpuStyle = e.target.value; };
