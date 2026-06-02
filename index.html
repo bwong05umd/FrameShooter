@@ -167,8 +167,8 @@
         <h3>Controls</h3>
         <div class="keys">
           <span><kbd>A</kbd>/<kbd>D</kbd> · <kbd>◄</kbd><kbd>►</kbd></span><span>Shuffle left / right</span>
-          <span><kbd>J</kbd> tap</span><span>Fire — 3 / 3 / 8</span>
-          <span><kbd>J</kbd> hold</span><span>Charge blast — release to fire (scales up to 2s, gold ring = full)</span>
+          <span><kbd>J</kbd></span><span>Fire — 3 / 3 / 8 · short re-fire cooldown</span>
+          <span><kbd>Space</kbd> hold</span><span>Charge blast — release to fire (scales up to 2s, gold ring = full). Can't move while charging; tap a direction to bank the charge for your next <kbd>Space</kbd></span>
           <span><kbd>L</kbd> · ◄◄ ►►</span><span>Dash i-frames — 2 / 8 / 10 · or double-tap a direction</span>
           <span><kbd>⇧</kbd> L-Shift</span><span>Parry — 1 / <b style="color:var(--startup)">2</b> / 22 · reflects incoming fire</span>
           <span><kbd>K</kbd></span><span>Trigger held power-up</span>
@@ -198,7 +198,7 @@
         <div class="fd" style="margin-top:10px">
           <b>Reading the matchup:</b> their Fire has <span class="y">3f</span> startup. Dash through the bullet, and they're stuck in <span class="p">8f recovery</span> — your free punish. Land a hit and they freeze in hit-stun (<b>26f</b>, decaying each hit) — enough to Fire again for a combo, but the freeze shrinks every hit so combos cap out instead of looping forever.
           <br><br><b style="color:#ff5b5b">⚡ Adrenaline:</b> below 45% HP your speed &amp; fire rate ramp up, reaching <b>1.5x</b> at 1% HP — a comeback window when you're nearly dead.
-          <br><br><b style="color:#ffd23f">⚡ Charge:</b> hold <kbd>J</kbd> to charge a blast. Gold ring = fully charged (2s cap). Release to fire — bigger, faster, harder-hitting the longer you charge. Getting hit won't cancel your charge.
+          <br><br><b style="color:#ffd23f">⚡ Charge:</b> hold <kbd>Space</kbd> to charge a blast. Gold ring = fully charged (2s cap). Release to fire — bigger, faster, harder-hitting the longer you charge. You can't move while charging; tap a direction to freeze &amp; bank the charge (dashed ring) — it fires the next time you press <kbd>Space</kbd>. Getting hit won't cancel your charge.
         </div>
       </div>
     </div>
@@ -263,6 +263,7 @@ const BLAST_H_MAX = 40;          // max bullet height at full charge
 const BLAST_V_MAX = 15;          // max bullet speed at full charge
 const CHARGE_THRESHOLD = 5;      // frames held before it counts as a charge (not a tap)
 const CHARGE_RING_R = 24;        // radius of the charge indicator ring
+const FIRE_COOLDOWN = 28;        // regular-shot re-fire lockout (frames) — anti-spam, human only
 
 /* power-ups */
 const PU_R = 13;
@@ -306,8 +307,10 @@ function mkFighter(side){
     stored: null,
     charges: null,
     puCd: 0,
-    chargeStart: null,       // frame when J was pressed down (human player only)
-    pendingChargeShot: null, // charge ratio 0-1, queued on key release, fires when free
+    chargeStart: null,        // frame when charge button pressed (human player only)
+    pendingChargeShot: null,  // stored charge ratio 0-1 (released or direction-locked)
+    pendingChargeArmed: false,// true => fire the stored charge as soon as free
+    fireCd: 0,                // regular-shot re-fire cooldown (frames, human only)
   };
 }
 let player, opp, bullets, powerups, powerupTimer;
@@ -331,7 +334,7 @@ const keys = new Set();
 const inputQueue = [];
 const lastTap = { left:-999, right:-999 };
 const KMAP = { left:["arrowleft","a"], right:["arrowright","d"] };
-const ACT  = { l:"dash", i:"beam", k:"power" };  // j handled separately for charge
+const ACT  = { j:"fire", l:"dash", i:"beam", k:"power" };  // space handled separately for charge
 
 function isDown(name){ return KMAP[name].some(k => keys.has(k)); }
 
@@ -343,6 +346,14 @@ addEventListener("keydown", e => {
 
   let tapDir = KMAP.left.includes(k) ? "left" : KMAP.right.includes(k) ? "right" : null;
   if (tapDir){
+    // pressing a direction while charging freezes the charge and banks it —
+    // it does NOT fire now; it waits for the next press of the charge button
+    if (player && player.chargeStart !== null){
+      const frames = frameCount - player.chargeStart;
+      player.pendingChargeShot = Math.min(frames, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
+      player.pendingChargeArmed = false;
+      player.chargeStart = null;
+    }
     if (frameCount - lastTap[tapDir] <= DASH_TAP_WIN){
       inputQueue.push({ act:"dash", dir: tapDir === "left" ? -1 : 1 });
       lastTap[tapDir] = -999;
@@ -358,9 +369,16 @@ addEventListener("keydown", e => {
 
   if (e.code === "ShiftLeft"){ inputQueue.push("parry"); return; }
 
-  // J key: begin charging (fire on release)
-  if (k === "j"){
-    if (player) player.chargeStart = frameCount;
+  // Space: the charge button. If a charge is banked, this arms it to fire;
+  // otherwise it begins a new charge. (Release fires an actively-held charge.)
+  if (k === " "){
+    if (player){
+      if (player.pendingChargeShot !== null && !player.pendingChargeArmed){
+        player.pendingChargeArmed = true;        // fire the banked charge
+      } else if (player.chargeStart === null && player.pendingChargeShot === null){
+        player.chargeStart = frameCount;          // start a fresh charge
+      }
+    }
     return;
   }
 
@@ -370,11 +388,12 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => {
   const k = e.key.toLowerCase();
   keys.delete(k);
-  // J key released: compute charge ratio and store as pending shot
-  if (k === "j" && player && player.chargeStart !== null){
+  // Space released while actively charging: store the charge and arm it to fire now
+  if (k === " " && player && player.chargeStart !== null){
     const frames = frameCount - player.chargeStart;
     const ratio = Math.min(frames, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
     player.pendingChargeShot = ratio;
+    player.pendingChargeArmed = true;
     player.chargeStart = null;
   }
 });
@@ -424,10 +443,19 @@ function adrenalineMult(f){
 
 function tryStart(f, i){
   let move = null;
+  let fireRegular = false;
   if (i.beam && f.meter >= MOVES.beam.cost) move = "beam";
   else if (i.parry) move = "parry";
   else if (i.dash) move = "dash";
-  else if (i.fire) move = "fire";
+  else if (i.fire){
+    const cl = i.chargeLevel || 0;
+    const isCharge = cl * CHARGE_FRAMES_MAX >= CHARGE_THRESHOLD;
+    const hasPowerup = f.charges && f.charges.count > 0;
+    fireRegular = !isCharge && !hasPowerup;
+    // the basic shot has a re-fire cooldown for the human (charge / power-ups exempt)
+    if (!f.isCPU && fireRegular && f.fireCd > 0) return false;
+    move = "fire";
+  }
   if (!move) return false;
 
   let dir = 0;
@@ -451,6 +479,9 @@ function tryStart(f, i){
   const chargeLevel = (move === "fire") ? (i.chargeLevel || 0) : 0;
   f.action = { move, data, frame:0, spawned:false, dir, chargeLevel };
   if (move === "beam") f.meter -= MOVES.beam.cost;
+  if (move === "fire" && fireRegular && !f.isCPU){
+    f.fireCd = Math.max(1, Math.round(FIRE_COOLDOWN / adrenalineMult(f)));
+  }
   if (move === "fire")  beep(chargeLevel > CHARGE_THRESHOLD/CHARGE_FRAMES_MAX ? 280 : 620, .05, "square", .04);
   if (move === "dash")  beep(180, .07, "sawtooth", .05);
   if (move === "parry") beep(900, .04, "triangle", .04);
@@ -461,10 +492,15 @@ function tryStart(f, i){
 function applyIntents(f, i){
   if (f.hitstun > 0 || f.action) return;
   if (tryStart(f, i)){
-    // clear pending charge once the fire action successfully starts
-    if (!f.isCPU && i.fire) f.pendingChargeShot = null;
+    // clear the banked charge once it has actually been fired (not on a plain shot)
+    if (!f.isCPU && i.fire && i.fromCharge){
+      f.pendingChargeShot = null;
+      f.pendingChargeArmed = false;
+    }
     return;
   }
+  // can't walk around while actively charging a shot
+  if (!f.isCPU && f.chargeStart !== null) return;
   let dir = 0;
   if (f.isCPU){ dir = (i.left?-1:0) + (i.right?1:0); }
   else { dir = (isDown("left")?-1:0) + (isDown("right")?1:0); }
@@ -792,12 +828,14 @@ function dummyThink(){
 function gatherPlayer(){
   const i = {left:isDown("left"), right:isDown("right"),
              fire:false, dash:false, parry:false, beam:false, power:false,
-             dashDir:null, chargeLevel:0};
+             dashDir:null, chargeLevel:0, fromCharge:false};
 
-  // carry pending charge shot forward until the player is free to fire
-  if (player.pendingChargeShot !== null){
+  // an armed charge fires as soon as the player is free to act; a banked
+  // (un-armed) charge just waits until the charge button is pressed again
+  if (player.pendingChargeShot !== null && player.pendingChargeArmed){
     i.fire = true;
     i.chargeLevel = player.pendingChargeShot;
+    i.fromCharge = true;
   }
 
   while (inputQueue.length){
@@ -813,6 +851,8 @@ function logicStep(){
   frameCount++;
   if (player.flash>0) player.flash--;
   if (opp.flash>0) opp.flash--;
+  if (player.fireCd>0) player.fireCd--;
+  if (opp.fireCd>0) opp.fireCd--;
   if (shake>0) shake *= 0.85;
 
   const pI = gatherPlayer();
