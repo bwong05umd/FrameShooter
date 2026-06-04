@@ -38,7 +38,7 @@ body{
 /* etheral-shadow ambient background, behind all content */
 #bgfx{
   position:fixed; inset:0; z-index:-1; pointer-events:none;
-  opacity:.5;
+  opacity:.6;
   /* fade the wisps out toward the edges so UI text stays legible */
   -webkit-mask-image:radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 100%);
   mask-image:radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 100%);
@@ -125,10 +125,14 @@ select{
 .bigtitle{
   font-weight:800; letter-spacing:.28em; line-height:1.05;
   font-size:clamp(30px,7vw,58px); margin:0;
-  background:linear-gradient(90deg,var(--p1),#fff 45%,var(--p2));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  text-shadow:0 0 40px rgba(33,230,193,.18);
+  background:linear-gradient(90deg,var(--p1),#8b7cf6 28%,#fff 50%,#ff7ac0 72%,var(--p2));
+  background-size:220% auto;
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent; -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 28px rgba(124,108,230,.4));
+  animation:titleSweep 5s linear infinite;
 }
+@keyframes titleSweep{ to{ background-position:220% center; } }
 .herotag{ color:var(--ink-dim); font-size:12px; letter-spacing:.26em; margin-top:14px; }
 
 .section-label{
@@ -149,22 +153,41 @@ select{
 .pill.active{ border-color:var(--p1); color:#eafffb; background:#0f2a27; box-shadow:0 0 0 1px var(--p1) inset; }
 .pill.active small{ color:#9fe9dd; }
 
-/* big primary action buttons */
+/* big primary action buttons — "colorful" gradient-glow treatment.
+   The glow uses the same indigo→purple→pink family as the etheral background
+   and hue-rotates in sync, so the button colour follows the moving backdrop. */
 .play-actions{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:6px 0 14px; }
 .bigbtn{
+  position:relative; overflow:hidden; isolation:isolate;
   font-family:inherit; cursor:pointer; color:var(--ink);
-  background:linear-gradient(180deg, rgba(20,27,46,.85), rgba(13,16,25,.85));
-  backdrop-filter:blur(2px);
+  background:linear-gradient(180deg, rgba(18,22,38,.92), rgba(11,13,20,.92));
   border:1px solid var(--line); border-radius:13px;
-  padding:22px 18px; transition:.14s; text-align:center;
+  padding:24px 18px; transition:transform .14s, box-shadow .3s; text-align:center;
   display:flex; flex-direction:column; align-items:center; gap:6px;
 }
+.bigbtn > *{ position:relative; z-index:1; }
+.bigbtn .glow{
+  position:absolute; inset:-2px; z-index:0; border-radius:inherit;
+  /* same indigo→purple→pink family as the etheral background + title */
+  background:linear-gradient(110deg,#6366f1,#a855f7 45%,#ec4899);
+  background-size:220% 220%;
+  opacity:.42; filter:blur(16px);
+  animation:glowShift 7s ease-in-out infinite;
+}
+.bigbtn:hover .glow{ opacity:.85; }
+@keyframes glowShift{ 0%,100%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } }
+.bigbtn .arrow{
+  position:absolute; top:13px; right:13px; z-index:2;
+  width:16px; height:16px; color:rgba(255,255,255,.5);
+  transition:transform .16s, color .16s;
+}
+.bigbtn:hover .arrow{ color:#fff; transform:translate(2px,-2px); }
 .bigbtn .ico{ font-size:30px; line-height:1; }
-.bigbtn .lbl{ font-size:16px; letter-spacing:.14em; font-weight:700; }
-.bigbtn .dsc{ font-size:11px; color:var(--ink-dim); letter-spacing:.04em; }
-.bigbtn:hover{ transform:translateY(-2px); }
-.bigbtn.versus:hover{ border-color:var(--p1); box-shadow:0 10px 30px rgba(33,230,193,.14), 0 0 0 1px var(--p1) inset; }
-.bigbtn.train:hover{ border-color:var(--startup); box-shadow:0 10px 30px rgba(255,207,63,.12), 0 0 0 1px var(--startup) inset; }
+.bigbtn .lbl{ font-size:16px; letter-spacing:.14em; font-weight:700; color:#fff; }
+.bigbtn .dsc{ font-size:11px; color:#aeb8d4; letter-spacing:.04em; }
+.bigbtn:hover{ transform:translateY(-3px); }
+.bigbtn.versus:hover{ box-shadow:0 14px 38px rgba(124,108,230,.32), 0 0 0 1px rgba(168,85,247,.55) inset; }
+.bigbtn.train:hover{ box-shadow:0 14px 38px rgba(236,72,153,.28), 0 0 0 1px rgba(236,72,153,.5) inset; }
 
 .menu-sec{ margin:26px 0 0; }
 .minor-actions{ display:flex; gap:10px; justify-content:center; margin-top:8px; }

@@ -1219,7 +1219,7 @@ function mountBackground(){
   const host = $("bgfx");
   if (host) host.appendChild(createEtherealShadow({
     color: "rgba(95, 110, 180, 1)",
-    scale: 80, speed: 70, noiseOpacity: 0.45, noiseScale: 1.2, sizing: "fill",
+    scale: 88, speed: 98, noiseOpacity: 0.45, noiseScale: 1.2, sizing: "fill",
   }));
 }
 
