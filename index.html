@@ -4,1228 +4,214 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>VERTICAL FRAME FIGHTER</title>
-<style>
-  :root{
-    --bg:#07090f;
-    --panel:#0d1019;
-    --line:#1b2233;
-    --p1:#21e6c1;      /* player cyan */
-    --p1dim:#0e6b5d;
-    --p2:#ff3d8b;      /* opponent magenta */
-    --p2dim:#7a1740;
-    --startup:#ffcf3f; /* yellow */
-    --active:#ff4b3e;  /* red */
-    --recovery:#9b6bff;/* purple */
-    --invuln:#3df27a;  /* green */
-    --hit:#ffffff;
-    --ink:#c9d4e8;
-    --ink-dim:#5e6c85;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{
-    background:
-      radial-gradient(1200px 700px at 50% -10%, #11182b 0%, transparent 60%),
-      var(--bg);
-    color:var(--ink);
-    font-family:"DejaVu Sans Mono","SFMono-Regular",Menlo,Consolas,monospace;
-    display:flex; flex-direction:column; align-items:center;
-    min-height:100%;
-    padding:14px 12px 28px;
-    -webkit-font-smoothing:antialiased;
-    overflow-x:hidden;
-  }
-  .title{
-    font-weight:800; letter-spacing:.32em; font-size:clamp(15px,2.4vw,22px);
-    margin:2px 0 2px; text-align:center;
-    background:linear-gradient(90deg,var(--p1),#fff 40%,var(--p2));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    text-shadow:0 0 22px rgba(33,230,193,.15);
-  }
-  .sub{color:var(--ink-dim); font-size:11px; letter-spacing:.22em; margin-bottom:10px; text-align:center}
-  .wrap{
-    display:flex; gap:18px; align-items:flex-start; justify-content:center;
-    flex-wrap:wrap; width:100%; max-width:980px;
-  }
-  .stage{
-    position:relative;
-    border:1px solid var(--line);
-    border-radius:10px;
-    background:#04060b;
-    box-shadow:0 0 0 1px #000 inset, 0 18px 60px rgba(0,0,0,.6), 0 0 60px rgba(33,230,193,.06);
-    overflow:hidden;
-  }
-  canvas{display:block; touch-action:none; image-rendering:pixelated}
-  .side{
-    width:280px; min-width:240px; flex:1 1 240px; max-width:320px;
-    display:flex; flex-direction:column; gap:10px;
-  }
-  .card{
-    border:1px solid var(--line); border-radius:9px; background:var(--panel);
-    padding:12px 13px;
-  }
-  .card h3{
-    margin:0 0 9px; font-size:11px; letter-spacing:.24em; color:var(--ink-dim);
-    text-transform:uppercase; font-weight:700;
-  }
-  .btnrow{display:flex; gap:7px; flex-wrap:wrap}
-  button{
-    font-family:inherit; cursor:pointer; color:var(--ink);
-    background:#121728; border:1px solid var(--line); border-radius:7px;
-    padding:8px 11px; font-size:12px; letter-spacing:.08em; transition:.12s;
-    flex:1 1 auto; white-space:nowrap;
-  }
-  button:hover{border-color:#33405d; background:#172036}
-  button.active{border-color:var(--p1); color:#eafffb; background:#0f2a27; box-shadow:0 0 0 1px var(--p1) inset}
-  button.warn.active{border-color:var(--startup); color:#fff7df; background:#2a2410; box-shadow:0 0 0 1px var(--startup) inset}
-  .keys{display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:12px; line-height:1.5}
-  kbd{
-    display:inline-block; min-width:20px; text-align:center;
-    background:#0a0e17; border:1px solid #2a3550; border-bottom-width:2px;
-    border-radius:5px; padding:1px 6px; font-size:11px; color:#e7eefc;
-  }
-  .legend{display:flex; flex-direction:column; gap:6px; font-size:12px}
-  .legend .row{display:flex; align-items:center; gap:9px}
-  .sw{width:14px; height:14px; border-radius:3px; flex:none; border:1px solid rgba(255,255,255,.15)}
-  .fd{font-size:11px; line-height:1.65; color:var(--ink-dim)}
-  .fd b{color:var(--ink)}
-  .fd .g{color:var(--invuln)} .fd .y{color:var(--startup)} .fd .r{color:var(--active)} .fd .p{color:var(--recovery)}
-  .hint{color:var(--ink-dim); font-size:11px; margin-top:8px; text-align:center; letter-spacing:.04em}
-  select{
-    font-family:inherit; background:#121728; color:var(--ink); border:1px solid var(--line);
-    border-radius:7px; padding:7px 8px; font-size:12px; flex:1 1 auto;
-  }
-  .row-sb{display:flex; align-items:center; gap:8px}
-  .tag{font-size:10px; letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase}
-  @media (max-width:720px){
-    .side{max-width:none; width:100%}
-    .wrap{flex-direction:column; align-items:center}
-  }
-</style>
+<link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
-  <div class="title">VERTICAL&nbsp;FRAME&nbsp;FIGHTER</div>
-  <div class="sub">A SHOOTING GALLERY WITH A FIGHTING-GAME SKELETON · 60 FPS · FRAME-PERFECT</div>
+  <!-- animated etheral-shadow background (vanilla port), behind everything -->
+  <div id="bgfx"></div>
 
-  <div class="wrap">
-    <div class="stage">
-      <canvas id="game" width="440" height="680"></canvas>
-    </div>
+  <!-- ════════════════════ LANDING / MENU ════════════════════ -->
+  <div id="menu" class="screen">
+    <div class="menu">
+      <div class="hero">
+        <h1 class="bigtitle">VERTICAL<br>FRAME&nbsp;FIGHTER</h1>
+        <div class="herotag">A SHOOTING GALLERY WITH A FIGHTING-GAME SKELETON · 60 FPS</div>
+      </div>
 
-    <div class="side">
-      <div class="card">
-        <h3>Mode</h3>
-        <div class="btnrow" style="margin-bottom:8px">
-          <button id="mVersus" class="active">⚔ Versus CPU</button>
-          <button id="mTrain" class="warn">🔬 Training</button>
-        </div>
-        <div class="row-sb" style="margin-bottom:8px">
-          <span class="tag">CPU</span>
-          <select id="diff">
-            <option value="easy">Easy · 18f reaction</option>
-            <option value="normal" selected>Normal · 12f reaction</option>
-            <option value="hard">Hard · 7f reaction</option>
-            <option value="expert">Expert · 3f · dash+parry</option>
-          </select>
-        </div>
-        <div class="row-sb" style="margin-bottom:8px">
-          <span class="tag">Style</span>
-          <select id="cpuStyle">
-            <option value="balanced" selected>Balanced · evades</option>
-            <option value="technical">Technical · parry + dash</option>
-          </select>
-        </div>
-        <div class="btnrow">
-          <button id="reset">↻ Reset (R)</button>
-          <button id="sound" class="active">🔊 Sound</button>
+      <div class="play-actions">
+        <button class="bigbtn versus" id="playVersus">
+          <span class="ico">⚔</span>
+          <span class="lbl">VERSUS&nbsp;CPU</span>
+          <span class="dsc">Fight the bot at your chosen difficulty</span>
+        </button>
+        <button class="bigbtn train" id="playTrain">
+          <span class="ico">🔬</span>
+          <span class="lbl">TRAINING</span>
+          <span class="dsc">Hitboxes, frame-step &amp; practice dummies</span>
+        </button>
+      </div>
+
+      <div class="menu-sec">
+        <p class="section-label">CPU Difficulty</p>
+        <div class="pills" id="diffPills">
+          <button class="pill" data-diff="easy">Easy<small>slow · rarely dodges</small></button>
+          <button class="pill active" data-diff="normal">Normal<small>beatable</small></button>
+          <button class="pill" data-diff="hard">Hard<small>sharp parry + charge</small></button>
+          <button class="pill" data-diff="expert">Expert<small>near-perfect</small></button>
         </div>
       </div>
 
-      <div class="card" id="trainCard" style="display:none">
-        <h3>Training Lab</h3>
-        <div class="btnrow" style="margin-bottom:8px">
-          <button id="pause">⏸ Pause (P)</button>
-          <button id="step">⏭ Step (.)</button>
-        </div>
-        <div class="btnrow" style="margin-bottom:8px">
-          <button id="hitbox" class="active">▦ Hitboxes (H)</button>
-        </div>
-        <div class="row-sb">
-          <span class="tag">Dummy</span>
-          <select id="dummy">
-            <option value="stand">Stand still</option>
-            <option value="fire">Auto-fire (~1.1s)</option>
-            <option value="track">Track + fire</option>
-          </select>
-        </div>
-        <div class="hint" style="text-align:left;margin-top:9px">
-          Pause, then tap <kbd>.</kbd> to advance one frame and watch every box. Inputs you hold are read on each stepped frame.
+      <div class="menu-sec">
+        <p class="section-label">CPU Style</p>
+        <div class="pills" id="stylePills">
+          <button class="pill active" data-style="balanced">Balanced<small>evades &amp; spaces</small></button>
+          <button class="pill" data-style="technical">Technical<small>parry + dash</small></button>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Controls</h3>
-        <div class="keys">
-          <span><kbd>A</kbd>/<kbd>D</kbd> · <kbd>◄</kbd><kbd>►</kbd></span><span>Shuffle left / right</span>
-          <span><kbd>J</kbd></span><span>Fire — 3 / 3 / 8 · short re-fire cooldown</span>
-          <span><kbd>Space</kbd> hold</span><span>Charge blast — release to fire (scales up to 2s, gold ring = full). Can't move while charging; tap a direction to bank the charge for your next <kbd>Space</kbd></span>
-          <span><kbd>L</kbd> · ◄◄ ►►</span><span>Dash i-frames — 2 / 8 / 10 · or double-tap a direction</span>
-          <span><kbd>⇧</kbd> L-Shift</span><span>Parry — 1 / <b style="color:var(--startup)">2</b> / 22 · reflects incoming fire</span>
-          <span><kbd>K</kbd></span><span>Trigger held power-up</span>
-          <span><kbd>I</kbd></span><span>Beam (full meter) — 30 / 40 / 25</span>
+      <div class="menu-sec">
+        <div class="minor-actions">
+          <button id="openSettings">⚙ Settings</button>
+          <button id="openHowto">❓ How to Play</button>
         </div>
-        <div class="hint" style="text-align:left">Hold ◄/► while pressing <kbd>L</kbd> to dodge sideways, or double-tap a direction to dash it. Numbers are <b>startup / active / recovery</b> frames.</div>
       </div>
 
-      <div class="card">
-        <h3>Power-ups</h3>
-        <div class="legend">
-          <div class="row"><span class="sw" style="background:#ff9f1c"></span> <b>Triple / Shotgun</b> — 3 parallel shots, fires <b>2×</b></div>
-          <div class="row"><span class="sw" style="background:#cfe3ff"></span> <b>Sniper</b> — 1 slim, fast, lethal round, fires <b>1×</b></div>
-        </div>
-        <div class="hint" style="text-align:left">A capsule streaks in from a side, then bounces around the center. <b>Shoot it</b> to collect (hold one at a time), then press <kbd>K</kbd> to load it into your gun.</div>
-      </div>
+      <!-- how to play (collapsible) -->
+      <div class="menu-sec" id="howtoWrap" hidden>
+        <p class="section-label">How to Play</p>
+        <div class="howto">
+          <div class="card">
+            <h3><span class="hi">🎮</span> Controls</h3>
+            <div class="keys">
+              <span><kbd>A</kbd>/<kbd>D</kbd> · <kbd>◄</kbd><kbd>►</kbd></span><span>Shuffle left / right</span>
+              <span><kbd>J</kbd></span><span>Fire — 3 / 3 / 8 frames</span>
+              <span><kbd>Space</kbd></span><span>Hold to charge a blast</span>
+              <span><kbd>L</kbd></span><span>Dash i-frames (or double-tap ◄/►)</span>
+              <span><kbd>⇧</kbd></span><span>Parry — reflects fire</span>
+              <span><kbd>K</kbd></span><span>Trigger held power-up</span>
+              <span><kbd>I</kbd></span><span>Beam (needs full meter)</span>
+            </div>
+            <div class="hint" style="text-align:left">Numbers are <b>startup / active / recovery</b> frames. Rebind any key in <b>Settings</b>.</div>
+          </div>
 
-      <div class="card">
-        <h3>Hitbox Legend</h3>
-        <div class="legend">
-          <div class="row"><span class="sw" style="background:var(--startup)"></span> Startup — committed, vulnerable</div>
-          <div class="row"><span class="sw" style="background:var(--active)"></span> Active — the hit exists now</div>
-          <div class="row"><span class="sw" style="background:var(--recovery)"></span> Recovery — can't act yet</div>
-          <div class="row"><span class="sw" style="background:var(--invuln)"></span> Invincible — dash i-frames</div>
-          <div class="row"><span class="sw" style="background:#7fb4ff"></span> Hurtbox — can be hit here</div>
-        </div>
-        <div class="fd" style="margin-top:10px">
-          <b>Reading the matchup:</b> their Fire has <span class="y">3f</span> startup. Dash through the bullet, and they're stuck in <span class="p">8f recovery</span> — your free punish. Land a hit and they freeze in hit-stun (<b>26f</b>, decaying each hit) — enough to Fire again for a combo, but the freeze shrinks every hit so combos cap out instead of looping forever.
-          <br><br><b style="color:#ff5b5b">⚡ Adrenaline:</b> below 45% HP your speed &amp; fire rate ramp up, reaching <b>1.5x</b> at 1% HP — a comeback window when you're nearly dead.
-          <br><br><b style="color:#ffd23f">⚡ Charge:</b> hold <kbd>Space</kbd> to charge a blast. Gold ring = fully charged (2s cap). Release to fire — bigger, faster, harder-hitting the longer you charge. You can't move while charging; tap a direction to freeze &amp; bank the charge (dashed ring) — it fires the next time you press <kbd>Space</kbd>. Getting hit won't cancel your charge.
+          <div class="card">
+            <h3><span class="hi">⚡</span> Mechanics</h3>
+            <div class="fd">
+              <b style="color:#ffd23f">Charge:</b> hold <kbd>Space</kbd>, release to fire — bigger &amp; harder the longer you hold (gold ring = full, 2s). You can't move while charging; tap a direction to <b>bank</b> the charge (dashed ring) for your next <kbd>Space</kbd>. Getting hit won't cancel it.
+              <br><br><b style="color:#ff5b5b">Adrenaline:</b> below 45% HP your speed &amp; fire rate ramp up to <b>1.5×</b> near death — a comeback window.
+              <br><br><b>Cancels:</b> the last few recovery frames flow into a follow-up — fire→fire rapid-fires, parry→fire punishes.
+            </div>
+          </div>
+
+          <div class="card">
+            <h3><span class="hi">🎁</span> Power-ups</h3>
+            <div class="legend">
+              <div class="row"><span class="sw" style="background:#ff9f1c"></span> <b>Triple</b> — 3 parallel shots, fires 2×</div>
+              <div class="row"><span class="sw" style="background:#cfe3ff"></span> <b>Sniper</b> — slim, fast, lethal, fires 1×</div>
+            </div>
+            <div class="hint" style="text-align:left">A capsule streaks in and bounces around center. <b>Shoot it</b> to collect, then press <kbd>K</kbd> to load it.</div>
+          </div>
+
+          <div class="card">
+            <h3><span class="hi">▦</span> Hitbox Legend</h3>
+            <div class="legend">
+              <div class="row"><span class="sw" style="background:var(--startup)"></span> Startup — committed, vulnerable</div>
+              <div class="row"><span class="sw" style="background:var(--active)"></span> Active — the hit exists now</div>
+              <div class="row"><span class="sw" style="background:var(--recovery)"></span> Recovery — can't act yet</div>
+              <div class="row"><span class="sw" style="background:var(--invuln)"></span> Invincible — dash i-frames</div>
+              <div class="row"><span class="sw" style="background:#7fb4ff"></span> Hurtbox — can be hit here</div>
+            </div>
+            <div class="hint" style="text-align:left">Dash through a shot → punish their recovery. Beam can't be parried — only dash i-frames pass through it.</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="hint">Click the stage to capture keyboard focus. Beam can't be parried — only dash i-frames pass through it.</div>
 
-<script>
-(() => {
-"use strict";
-
-/* ───────────────────────────── canvas ───────────────────────────── */
-const cv = document.getElementById("game");
-const ctx = cv.getContext("2d");
-const W = cv.width, H = cv.height;
-
-function fit(){
-  const maxH = Math.min(window.innerHeight - 150, 760);
-  const scale = Math.max(0.55, Math.min(1, maxH / H));
-  cv.style.width  = (W*scale) + "px";
-  cv.style.height = (H*scale) + "px";
-}
-window.addEventListener("resize", fit); fit();
-
-/* ───────────────────────────── frame data ────────────────────────── */
-const STEP = 1000/60;
-const METER_MAX = 100;
-const HP_MAX = 150;          // was 100 — 50% more health
-
-const MOVES = {
-  fire : { startup:3,  active:3,  recovery:8 },    // was 6/3/12 — snappier feel
-  dash : { startup:2,  active:8,  recovery:10 },
-  parry: { startup:1,  active:2,  recovery:22 },
-  beam : { startup:30, active:40, recovery:25, cost:METER_MAX },
-};
-const total = m => m.startup + m.active + m.recovery;
-
-const FW = 34, FH = 26;
-const WALK = 4.0;            // was 3.2 — slightly faster movement
-const BULLET_V = 8;
-const BW = 9, BH = 16;
-const DASH_V = 7;
-const BEAM_HW = 22;
-const HITSTUN = 26;
-const HITSTUN_DECAY = 6;
-const HITSTUN_MIN = 8;
-const PUSH = 10;
-const DMG_SHOT = 9;
-const DMG_PARRY = 14;
-const DMG_BEAM_TICK = 3;
-const BEAM_TICK = 6;
-const METER_HIT = 12, METER_PARRY = 5;
-const DASH_TAP_WIN = 14;
-const ADR_HP_HI = 45;
-const ADR_HP_LO = 1;
-const ADR_MAX = 1.5;
-
-/* charge shot */
-const CHARGE_FRAMES_MAX = 120;   // 2 seconds at 60fps
-const DMG_CHARGE_MAX = 72;       // max damage at full charge
-const BLAST_W_MAX = 26;          // max bullet width at full charge
-const BLAST_H_MAX = 40;          // max bullet height at full charge
-const BLAST_V_MAX = 15;          // max bullet speed at full charge
-const CHARGE_THRESHOLD = 5;      // frames held before it counts as a charge (not a tap)
-const CHARGE_RING_R = 24;        // radius of the charge indicator ring
-const FIRE_COOLDOWN = 28;        // regular-shot re-fire lockout (frames) — anti-spam, human only
-
-/* power-ups */
-const PU_R = 13;
-const PU_ENTRY_VX = 7;
-const PU_BOUNCE_VX = 4;
-const PU_BOUNCE_VY = 2.6;
-const PU_BAND_TOP = 150, PU_BAND_BOT = H-150;
-const PU_SPAWN_MIN = 360, PU_SPAWN_MAX = 540;
-const TRIPLE_OFFSET = 19;
-const SNIPER_V = 22;             // was 13 — much faster
-const SNIPER_W = 5;              // was 18 — slim like a real sniper round
-const SNIPER_H = 36;             // was 30 — slightly longer
-const DMG_SNIPER = 26;           // was 22
-const PU_COLORS = { triple:"#ff9f1c", sniper:"#cfe3ff" };
-
-/* ───────────────────────────── state ─────────────────────────────── */
-let mode = "versus";
-let showHB = false;
-let paused = false;
-let stepOnce = false;
-let frameCount = 0;
-let winner = null;
-let hitFlash = 0, shake = 0;
-let reactionDelay = 12, parryChance = 0.05, cpuAggro = 0.6;
-let cpuStyle = "balanced";
-let cpuExpert = false;           // expert difficulty flag
-let dummyMode = "stand";
-
-function mkFighter(side){
-  return {
-    side,
-    x: W/2,
-    y: side==="bottom" ? H-58 : 58,
-    hp: HP_MAX,
-    meter: 0,
-    action: null,
-    hitstun: 0,
-    combo: 0,
-    aiCd: 0,
-    flash: 0,
-    stored: null,
-    charges: null,
-    puCd: 0,
-    chargeStart: null,        // frame when charge button pressed (human player only)
-    pendingChargeShot: null,  // stored charge ratio 0-1 (released or direction-locked)
-    pendingChargeArmed: false,// true => fire the stored charge as soon as free
-    fireCd: 0,                // regular-shot re-fire cooldown (frames, human only)
-  };
-}
-let player, opp, bullets, powerups, powerupTimer;
-
-function reset(){
-  player = mkFighter("bottom");
-  opp = mkFighter("top");
-  player.isCPU = false;
-  opp.isCPU = (mode === "versus");
-  bullets = [];
-  powerups = [];
-  powerupTimer = 240;
-  frameCount = 0; winner = null; hitFlash = 0; shake = 0;
-  inputQueue.length = 0;
-  paused = false; stepOnce = false;
-  syncButtons();
-}
-
-/* ───────────────────────────── input ─────────────────────────────── */
-const keys = new Set();
-const inputQueue = [];
-const lastTap = { left:-999, right:-999 };
-const KMAP = { left:["arrowleft","a"], right:["arrowright","d"] };
-const ACT  = { j:"fire", l:"dash", i:"beam", k:"power" };  // space handled separately for charge
-
-function isDown(name){ return KMAP[name].some(k => keys.has(k)); }
-
-addEventListener("keydown", e => {
-  const k = e.key.toLowerCase();
-  if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(k)) e.preventDefault();
-  if (e.repeat) return;
-  keys.add(k);
-
-  let tapDir = KMAP.left.includes(k) ? "left" : KMAP.right.includes(k) ? "right" : null;
-  if (tapDir){
-    // pressing a direction while charging freezes the charge and banks it —
-    // it does NOT fire now; it waits for the next press of the charge button
-    if (player && player.chargeStart !== null){
-      const frames = frameCount - player.chargeStart;
-      player.pendingChargeShot = Math.min(frames, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
-      player.pendingChargeArmed = false;
-      player.chargeStart = null;
-    }
-    if (frameCount - lastTap[tapDir] <= DASH_TAP_WIN){
-      inputQueue.push({ act:"dash", dir: tapDir === "left" ? -1 : 1 });
-      lastTap[tapDir] = -999;
-    } else {
-      lastTap[tapDir] = frameCount;
-    }
-  }
-
-  if (k === "r"){ reset(); return; }
-  if (k === "h"){ toggleHB(); return; }
-  if (k === "p"){ togglePause(); return; }
-  if (k === "." ){ if (paused) stepOnce = true; return; }
-
-  if (e.code === "ShiftLeft"){ inputQueue.push("parry"); return; }
-
-  // Space: the charge button. If a charge is banked, this arms it to fire;
-  // otherwise it begins a new charge. (Release fires an actively-held charge.)
-  if (k === " "){
-    if (player){
-      if (player.pendingChargeShot !== null && !player.pendingChargeArmed){
-        player.pendingChargeArmed = true;        // fire the banked charge
-      } else if (player.chargeStart === null && player.pendingChargeShot === null){
-        player.chargeStart = frameCount;          // start a fresh charge
-      }
-    }
-    return;
-  }
-
-  if (ACT[k]) inputQueue.push(ACT[k]);
-});
-
-addEventListener("keyup", e => {
-  const k = e.key.toLowerCase();
-  keys.delete(k);
-  // Space released while actively charging: store the charge and arm it to fire now
-  if (k === " " && player && player.chargeStart !== null){
-    const frames = frameCount - player.chargeStart;
-    const ratio = Math.min(frames, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
-    player.pendingChargeShot = ratio;
-    player.pendingChargeArmed = true;
-    player.chargeStart = null;
-  }
-});
-
-cv.addEventListener("mousedown", () => cv.focus && cv.focus());
-cv.tabIndex = 0;
-
-/* ───────────────────────────── audio ─────────────────────────────── */
-let actx = null, sound = true;
-function beep(freq, dur, type="square", vol=0.05){
-  if (!sound) return;
-  try{
-    if (!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = actx.createOscillator(), g = actx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.value = vol;
-    o.connect(g).connect(actx.destination);
-    const t = actx.currentTime;
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.start(t); o.stop(t + dur);
-  }catch(_){}
-}
-
-/* ───────────────────────────── helpers ───────────────────────────── */
-function phaseOf(f){
-  if (!f.action) return "idle";
-  const d = f.action.data, fr = f.action.frame;
-  if (fr < d.startup) return "startup";
-  if (fr < d.startup + d.active) return "active";
-  if (fr < total(d)) return "recovery";
-  return "done";
-}
-const isInvuln = f => f.action && f.action.move === "dash" && phaseOf(f) === "active";
-const isParrying = f => f.action && f.action.move === "parry" && phaseOf(f) === "active";
-const clampX = x => Math.max(FW/2, Math.min(W - FW/2, x));
-const rand = (a,b) => a + Math.random()*(b-a);
-const overlap = (ax,ay,aw,ah,bx,by,bw,bh) =>
-  Math.abs(ax-bx) < (aw+bw)/2 && Math.abs(ay-by) < (ah+bh)/2;
-
-function adrenalineMult(f){
-  if (f.hp >= ADR_HP_HI) return 1;
-  const hp = Math.max(ADR_HP_LO, f.hp);
-  const t = (ADR_HP_HI - hp) / (ADR_HP_HI - ADR_HP_LO);
-  return 1 + (ADR_MAX - 1) * t;
-}
-
-function tryStart(f, i){
-  let move = null;
-  let fireRegular = false;
-  if (i.beam && f.meter >= MOVES.beam.cost) move = "beam";
-  else if (i.parry) move = "parry";
-  else if (i.dash) move = "dash";
-  else if (i.fire){
-    const cl = i.chargeLevel || 0;
-    const isCharge = cl * CHARGE_FRAMES_MAX >= CHARGE_THRESHOLD;
-    const hasPowerup = f.charges && f.charges.count > 0;
-    fireRegular = !isCharge && !hasPowerup;
-    // the basic shot has a re-fire cooldown for the human (charge / power-ups exempt)
-    if (!f.isCPU && fireRegular && f.fireCd > 0) return false;
-    move = "fire";
-  }
-  if (!move) return false;
-
-  let dir = 0;
-  if (move === "dash"){
-    if (f.isCPU){ dir = i.dashDir || 0; }
-    else if (i.dashDir != null){ dir = i.dashDir; }
-    else { dir = (isDown("left")?-1:0) + (isDown("right")?1:0); }
-  }
-  let data = MOVES[move];
-  if (move === "fire"){
-    const m = adrenalineMult(f);
-    if (m > 1.001){
-      data = {
-        startup:  Math.max(1, Math.round(data.startup  / m)),
-        active:   Math.max(1, Math.round(data.active   / m)),
-        recovery: Math.max(1, Math.round(data.recovery / m)),
-      };
-    }
-  }
-  // store charge level on the action so spawnBullet can use it
-  const chargeLevel = (move === "fire") ? (i.chargeLevel || 0) : 0;
-  f.action = { move, data, frame:0, spawned:false, dir, chargeLevel };
-  if (move === "beam") f.meter -= MOVES.beam.cost;
-  if (move === "fire" && fireRegular && !f.isCPU){
-    f.fireCd = Math.max(1, Math.round(FIRE_COOLDOWN / adrenalineMult(f)));
-  }
-  if (move === "fire")  beep(chargeLevel > CHARGE_THRESHOLD/CHARGE_FRAMES_MAX ? 280 : 620, .05, "square", .04);
-  if (move === "dash")  beep(180, .07, "sawtooth", .05);
-  if (move === "parry") beep(900, .04, "triangle", .04);
-  if (move === "beam")  beep(110, .25, "sawtooth", .06);
-  return true;
-}
-
-function applyIntents(f, i){
-  if (f.hitstun > 0 || f.action) return;
-  if (tryStart(f, i)){
-    // clear the banked charge once it has actually been fired (not on a plain shot)
-    if (!f.isCPU && i.fire && i.fromCharge){
-      f.pendingChargeShot = null;
-      f.pendingChargeArmed = false;
-    }
-    return;
-  }
-  // can't walk around while actively charging a shot
-  if (!f.isCPU && f.chargeStart !== null) return;
-  let dir = 0;
-  if (f.isCPU){ dir = (i.left?-1:0) + (i.right?1:0); }
-  else { dir = (isDown("left")?-1:0) + (isDown("right")?1:0); }
-  if (dir) f.x = clampX(f.x + dir*WALK*adrenalineMult(f));
-}
-
-function spawnBullet(f, chargeLevel){
-  chargeLevel = chargeLevel || 0;
-  const up = f.side === "bottom";
-  const mod = f.charges;
-
-  // power-up shots take priority over charge
-  if (mod && mod.count > 0 && mod.kind === "triple"){
-    const baseY = up ? f.y - FH/2 - BH/2 : f.y + FH/2 + BH/2;
-    const vy = up ? -BULLET_V : BULLET_V;
-    for (const dx of [-TRIPLE_OFFSET, 0, TRIPLE_OFFSET]){
-      bullets.push({ type:"shot", owner:f.side, x:clampX(f.x+dx), y:baseY, vy,
-        w:BW, h:BH, born:frameCount, dead:false, dmg:DMG_SHOT, variant:"triple" });
-    }
-    beep(700,.05,"square",.045);
-    mod.count--;
-    if (mod.count <= 0) f.charges = null;
-    return;
-  }
-  if (mod && mod.count > 0 && mod.kind === "sniper"){
-    const sy = up ? f.y - FH/2 - SNIPER_H/2 : f.y + FH/2 + SNIPER_H/2;
-    const svy = up ? -SNIPER_V : SNIPER_V;
-    bullets.push({ type:"shot", owner:f.side, x:f.x, y:sy, vy:svy,
-      w:SNIPER_W, h:SNIPER_H, born:frameCount, dead:false, dmg:DMG_SNIPER, variant:"sniper" });
-    beep(420,.09,"sawtooth",.05);
-    mod.count--;
-    if (mod.count <= 0) f.charges = null;
-    return;
-  }
-
-  // charged blast (hold threshold exceeded)
-  if (chargeLevel * CHARGE_FRAMES_MAX >= CHARGE_THRESHOLD){
-    const t = chargeLevel;
-    const bw = BW + (BLAST_W_MAX - BW) * t;
-    const bh = BH + (BLAST_H_MAX - BH) * t;
-    const spd = BULLET_V + (BLAST_V_MAX - BULLET_V) * t;
-    const vy = up ? -spd : spd;
-    const dmg = Math.round(DMG_SHOT + (DMG_CHARGE_MAX - DMG_SHOT) * t);
-    const baseY = up ? f.y - FH/2 - bh/2 : f.y + FH/2 + bh/2;
-    bullets.push({ type:"shot", owner:f.side, x:f.x, y:baseY, vy,
-      w:bw, h:bh, born:frameCount, dead:false, dmg:dmg, variant:"charge", chargeLevel:t });
-    beep(200 + t*220, 0.08 + t*0.12, "sawtooth", 0.06 + t*0.02);
-    return;
-  }
-
-  // normal shot
-  const baseY = up ? f.y - FH/2 - BH/2 : f.y + FH/2 + BH/2;
-  const vy = up ? -BULLET_V : BULLET_V;
-  bullets.push({ type:"shot", owner:f.side, x:f.x, y:baseY, vy,
-    w:BW, h:BH, born:frameCount, dead:false, dmg:DMG_SHOT, variant:"normal" });
-}
-
-function triggerPowerup(f){
-  if (winner || !f.stored || f.charges) return;
-  if (f.stored === "triple") f.charges = { kind:"triple", count:2 };
-  else if (f.stored === "sniper") f.charges = { kind:"sniper", count:1 };
-  f.stored = null;
-  beep(980,.08,"triangle",.05);
-}
-
-function spawnPowerup(){
-  const fromLeft = Math.random() < 0.5;
-  const kind = Math.random() < 0.5 ? "triple" : "sniper";
-  powerups.push({
-    kind,
-    x: fromLeft ? -PU_R : W+PU_R,
-    y: H/2,
-    vx: fromLeft ? PU_ENTRY_VX : -PU_ENTRY_VX,
-    vy: 0,
-    state: "entering",
-    spin: 0,
-    dead: false,
-  });
-}
-
-function updatePowerups(){
-  if (winner) return;
-  if (powerups.length === 0){
-    if (--powerupTimer <= 0){ spawnPowerup(); powerupTimer = Math.round(rand(PU_SPAWN_MIN, PU_SPAWN_MAX)); }
-  }
-  for (const p of powerups){
-    p.x += p.vx; p.y += p.vy; p.spin += 0.06;
-    if (p.state === "entering"){
-      if ((p.vx > 0 && p.x >= W/2) || (p.vx < 0 && p.x <= W/2)){
-        p.state = "bouncing";
-        p.vx = Math.sign(p.vx) * PU_BOUNCE_VX;
-        p.vy = (Math.random() < 0.5 ? -1 : 1) * PU_BOUNCE_VY;
-      }
-    } else {
-      if (p.x < PU_R){ p.x = PU_R; p.vx = Math.abs(p.vx); }
-      if (p.x > W-PU_R){ p.x = W-PU_R; p.vx = -Math.abs(p.vx); }
-      if (p.y < PU_BAND_TOP){ p.y = PU_BAND_TOP; p.vy = Math.abs(p.vy); }
-      if (p.y > PU_BAND_BOT){ p.y = PU_BAND_BOT; p.vy = -Math.abs(p.vy); }
-    }
-  }
-  powerups = powerups.filter(p => !p.dead);
-}
-
-function spawnBeam(f){
-  const up = f.side === "bottom";
-  const muzzle = up ? f.y - FH/2 : f.y + FH/2;
-  const far = up ? 0 : H;
-  bullets.push({
-    type:"beam", owner:f.side,
-    x:f.x, y:(muzzle+far)/2, w:BEAM_HW*2, h:Math.abs(far-muzzle),
-    vy:0, life:MOVES.beam.active, tick:0, dead:false, born:frameCount,
-  });
-  shake = 8;
-}
-
-function advanceFighter(f){
-  if (f.hitstun > 0){
-    f.hitstun--;
-    if (f.hitstun === 0) f.combo = 0;
-    return;
-  }
-  if (!f.action) return;
-  const ph = phaseOf(f), fr = f.action.frame;
-  if (f.action.move === "fire" && fr === f.action.data.startup && !f.action.spawned){
-    spawnBullet(f, f.action.chargeLevel || 0); f.action.spawned = true;
-  }
-  if (f.action.move === "beam" && fr === f.action.data.startup && !f.action.spawned){
-    spawnBeam(f); f.action.spawned = true;
-  }
-  if (f.action.move === "dash" && ph === "active" && f.action.dir){
-    f.x = clampX(f.x + f.action.dir * DASH_V);
-  }
-  f.action.frame++;
-  if (f.action.frame >= total(f.action.data)) f.action = null;
-}
-
-function damage(target, attacker, amount, kind){
-  if (winner) return;
-  if (target.hitstun > 0) attacker.combo++;
-  else attacker.combo = 1;
-  target.hp = Math.max(0, target.hp - amount);
-  target.hitstun = Math.max(HITSTUN_MIN, HITSTUN - (attacker.combo - 1) * HITSTUN_DECAY);
-  let pd = Math.sign(target.x - attacker.x); if (pd === 0) pd = (attacker.combo % 2 ? 1 : -1);
-  target.x = clampX(target.x + pd * PUSH);
-  target.action = null;
-  // NOTE: intentionally do NOT clear target.chargeStart or target.pendingChargeShot
-  // so that getting hit while charging doesn't cancel the charge
-  target.flash = 6;
-  attacker.meter = Math.min(METER_MAX, attacker.meter + (kind==="parry"?METER_PARRY:METER_HIT));
-  hitFlash = 5; shake = Math.min(12, shake + (kind==="beam"?2:5));
-  beep(kind==="parry"?1200:240, .06, "square", .06);
-  if (target.hp <= 0){ winner = attacker.side; beep(160,.5,"sawtooth",.07); }
-}
-
-function updateBullets(){
-  for (const b of bullets){
-    const target = (b.owner === "bottom") ? opp : player;
-
-    if (b.type === "beam"){
-      b.life--; b.tick--;
-      if (b.life <= 0){ b.dead = true; continue; }
-      if (overlap(b.x,b.y,b.w,b.h, target.x,target.y,FW,FH) && !isInvuln(target)){
-        if (b.tick <= 0){ damage(target, b.owner==="bottom"?player:opp, DMG_BEAM_TICK, "beam"); b.tick = BEAM_TICK; }
-      }
-      continue;
-    }
-
-    b.y += b.vy;
-    if (b.y < -20 || b.y > H+20){ b.dead = true; continue; }
-
-    const owner = (b.owner === "bottom") ? player : opp;
-    let collected = false;
-    for (const p of powerups){
-      if (p.dead) continue;
-      if (!overlap(b.x,b.y,b.w,b.h, p.x,p.y, PU_R*2, PU_R*2)) continue;
-      if (!owner.stored && !owner.charges){
-        owner.stored = p.kind; p.dead = true; b.dead = true;
-        owner.flash = 6; hitFlash = 4;
-        beep(1300,.06,"square",.05);
-        collected = true;
-      }
-      break;
-    }
-    if (collected) continue;
-
-    if (!overlap(b.x,b.y,b.w,b.h, target.x,target.y,FW,FH)) continue;
-
-    if (isInvuln(target)) continue;
-    if (isParrying(target)){
-      b.owner = target.side;
-      b.vy = -b.vy * 1.4;
-      b.born = frameCount;
-      b.parried = true;
-      b.dmg = Math.round((b.dmg || DMG_SHOT) * 1.5);
-      target.meter = Math.min(METER_MAX, target.meter + METER_PARRY);
-      target.flash = 6; hitFlash = 6; shake = 7;
-      beep(1500,.05,"triangle",.06);
-      continue;
-    }
-    const attacker = (b.owner === "bottom") ? player : opp;
-    damage(target, attacker, b.dmg || DMG_SHOT, "shot");
-    b.dead = true;
-  }
-  bullets = bullets.filter(b => !b.dead);
-}
-
-/* ───────────────────────────── AI ────────────────────────────────── */
-function cpuThink(){
-  const i = {left:false,right:false,fire:false,dash:false,parry:false,beam:false,power:false,dashDir:0,chargeLevel:0};
-  if (opp.hitstun > 0 || opp.action || winner) return i;
-
-  if (opp.stored && !opp.charges){ i.power = true; return i; }
-
-  const beam = bullets.find(b => b.owner==="bottom" && b.type==="beam"
-            && Math.abs(b.x-opp.x) < (BEAM_HW+FW/2));
-  if (beam){
-    i.dash = true; i.dashDir = (opp.x > W/2) ? -1 : 1; return i;
-  }
-
-  // expert: react to player charging — dash away as charge builds
-  if (cpuExpert && player.chargeStart !== null){
-    const cT = Math.min(frameCount - player.chargeStart, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX;
-    if (cT > 0.45 && Math.random() < (0.25 + cT * 0.5)){
-      i.dash = true;
-      i.dashDir = (player.x <= opp.x) ? 1 : -1;
-      return i;
-    }
-  }
-  // expert: react to pending charge blast queued on player
-  if (cpuExpert && player.pendingChargeShot !== null && player.pendingChargeShot > 0.4 && Math.random() < 0.5){
-    i.dash = true; i.dashDir = (player.x <= opp.x) ? 1 : -1; return i;
-  }
-
-  let threat = null, bestT = Infinity;
-  for (const b of bullets){
-    if (b.owner !== "bottom" || b.type !== "shot" || b.vy <= 0) continue;
-    if (frameCount - b.born < reactionDelay) continue;
-    if (Math.abs(b.x - opp.x) > (FW/2 + b.w/2 + 4)) continue;
-    const t = (opp.y - b.y) / b.vy;
-    if (t >= 0 && t < bestT){ bestT = t; threat = b; }
-  }
-  if (threat){
-    const tech = cpuStyle === "technical" || cpuExpert;
-    const parryWindowMax = cpuExpert ? 6 : (tech ? 4.5 : 3.4);
-    const inParryWindow = bestT >= 1 && bestT <= parryWindowMax;
-    const pChance = cpuExpert ? 0.92 : (tech ? 0.75 : parryChance);
-    if (inParryWindow && Math.random() < pChance){
-      i.parry = true; return i;
-    }
-    const dashThresh = cpuExpert ? 18 : (tech ? 9 : 16);
-    if (bestT <= dashThresh){
-      i.dash = true;
-      i.dashDir = (threat.x <= opp.x) ? 1 : -1;
-      if (opp.x + i.dashDir*45 > W-FW/2) i.dashDir = -1;
-      if (opp.x + i.dashDir*45 < FW/2)   i.dashDir = 1;
-      return i;
-    }
-    if (tech && !cpuExpert){
-      if (Math.random() < 0.04){ i.dash = true; i.dashDir = (opp.x < W/2)?1:-1; return i; }
-      return i;
-    }
-  }
-
-  if (opp.aiCd > 0) opp.aiCd--;
-  if (opp.puCd > 0) opp.puCd--;
-
-  // expert: frequent proactive dash-dancing
-  if (cpuExpert && opp.aiCd <= 0 && Math.random() < 0.022){
-    i.dash = true;
-    i.dashDir = (player.x < opp.x) ? -1 : 1;
-    opp.aiCd = Math.round(rand(10, 22));
-    return i;
-  }
-
-  if (!opp.stored && !opp.charges && powerups.length){
-    const p = powerups[0];
-    const dx = p.x - opp.x;
-    if (Math.abs(dx) > 10){ if (dx < 0) i.left = true; else i.right = true; return i; }
-    if (opp.puCd <= 0){ i.fire = true; opp.puCd = Math.round(rand(10,20)); return i; }
-  }
-
-  if (opp.meter >= METER_MAX){
-    const pRec = player.action && phaseOf(player) === "recovery";
-    const lined = Math.abs(opp.x - player.x) < 22;
-    if (lined && (pRec || Math.random() < 0.012)){ i.beam = true; return i; }
-  }
-
-  const dx = player.x - opp.x;
-  const lined = Math.abs(dx) < 16;
-  if (lined){
-    const pInv = isInvuln(player);
-    if (opp.aiCd <= 0 && !pInv && Math.random() < cpuAggro){
-      i.fire = true; opp.aiCd = Math.round(rand(cpuExpert ? 8 : 16, cpuExpert ? 22 : 34)); return i;
-    }
-    if (Math.random() < (cpuExpert ? 0.04 : 0.02)){ if (Math.random()<0.5) i.left=true; else i.right=true; }
-    if ((cpuStyle==="technical" || cpuExpert) && Math.random() < (cpuExpert ? 0.03 : 0.015)){
-      i.dash = true; i.dashDir = (player.x < opp.x)?-1:1; return i;
-    }
-  } else {
-    if (dx < 0) i.left = true; else i.right = true;
-    // expert: occasionally dash toward player to close gap
-    if (cpuExpert && Math.abs(dx) > 40 && opp.aiCd <= 0 && Math.random() < 0.05){
-      i.dash = true; i.dashDir = Math.sign(dx);
-      opp.aiCd = Math.round(rand(12, 24));
-      return i;
-    }
-  }
-  return i;
-}
-
-function dummyThink(){
-  const i = {left:false,right:false,fire:false,dash:false,parry:false,beam:false};
-  if (opp.hitstun > 0 || opp.action || winner) return i;
-  if (dummyMode === "track" || dummyMode === "fire"){
-    if (dummyMode === "track"){
-      const dx = player.x - opp.x;
-      if (Math.abs(dx) > 4){ if (dx<0) i.left=true; else i.right=true; }
-    }
-    if (frameCount % 66 === 0) i.fire = true;
-  }
-  return i;
-}
-
-/* ───────────────────────────── logic step ─────────────────────────── */
-function gatherPlayer(){
-  const i = {left:isDown("left"), right:isDown("right"),
-             fire:false, dash:false, parry:false, beam:false, power:false,
-             dashDir:null, chargeLevel:0, fromCharge:false};
-
-  // an armed charge fires as soon as the player is free to act; a banked
-  // (un-armed) charge just waits until the charge button is pressed again
-  if (player.pendingChargeShot !== null && player.pendingChargeArmed){
-    i.fire = true;
-    i.chargeLevel = player.pendingChargeShot;
-    i.fromCharge = true;
-  }
-
-  while (inputQueue.length){
-    const a = inputQueue.shift();
-    if (typeof a === "string") i[a] = true;
-    else if (a && a.act === "dash"){ i.dash = true; i.dashDir = a.dir; }
-  }
-  return i;
-}
-
-function logicStep(){
-  if (winner){ inputQueue.length = 0; return; }
-  frameCount++;
-  if (player.flash>0) player.flash--;
-  if (opp.flash>0) opp.flash--;
-  if (player.fireCd>0) player.fireCd--;
-  if (opp.fireCd>0) opp.fireCd--;
-  if (shake>0) shake *= 0.85;
-
-  const pI = gatherPlayer();
-  const oI = (mode === "versus") ? cpuThink() : dummyThink();
-
-  if (pI.power) triggerPowerup(player);
-  if (oI.power) triggerPowerup(opp);
-
-  applyIntents(player, pI);
-  applyIntents(opp, oI);
-  advanceFighter(player);
-  advanceFighter(opp);
-  updatePowerups();
-  updateBullets();
-}
-
-/* ───────────────────────────── render ────────────────────────────── */
-const cssCache = {};
-function getCss(v){ return cssCache[v] || (cssCache[v] = getComputedStyle(document.documentElement).getPropertyValue(v).trim()); }
-
-function roundRect(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
-}
-
-function drawFighter(f){
-  const base = f.side === "bottom" ? getCss("--p1") : getCss("--p2");
-  const ph = phaseOf(f);
-  let col = base;
-  if (f.hitstun>0) col = (frameCount%4<2)?"#fff":"#ff7a7a";
-  else if (f.action){
-    if (f.action.move==="dash" && ph==="active") col = getCss("--invuln");
-    else if (f.action.move==="parry" && ph==="active") col = "#fff";
-    else if (ph==="startup") col = getCss("--startup");
-    else if (ph==="active")  col = getCss("--active");
-    else if (ph==="recovery")col = getCss("--recovery");
-  }
-  const x = f.x - FW/2, y = f.y - FH/2;
-
-  ctx.save();
-  if (f.action && (ph==="active") || isInvuln(f) || isParrying(f)){
-    ctx.shadowColor = col; ctx.shadowBlur = 18;
-  } else { ctx.shadowColor = base; ctx.shadowBlur = 8; }
-  ctx.fillStyle = col;
-  roundRect(x,y,FW,FH,5); ctx.fill();
-  ctx.restore();
-
-  ctx.fillStyle = "rgba(0,0,0,.45)";
-  roundRect(x+4,y+4,FW-8,FH-8,3); ctx.fill();
-
-  const mw = 12, mh = 5;
-  ctx.fillStyle = col;
-  if (f.side==="bottom") roundRect(f.x-mw/2, y-mh, mw, mh, 2);
-  else roundRect(f.x-mw/2, y+FH, mw, mh, 2);
-  ctx.fill();
-
-  if (isInvuln(f)){
-    ctx.strokeStyle = "rgba(61,242,122,.9)"; ctx.lineWidth = 2;
-    const pad = 3 + (frameCount%6);
-    roundRect(x-pad,y-pad,FW+pad*2,FH+pad*2,7); ctx.stroke();
-  }
-  if (isParrying(f)){
-    ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 2.5;
-    roundRect(x-5,y-5,FW+10,FH+10,8); ctx.stroke();
-  }
-  const adr = adrenalineMult(f);
-  if (adr > 1.001){
-    const a = 0.22 + 0.18*Math.sin(frameCount*0.4) + (adr-1)*0.5;
-    ctx.strokeStyle = `rgba(255,64,64,${Math.min(0.8,a)})`;
-    ctx.lineWidth = 2;
-    const p = 5 + (adr-1)*18;
-    roundRect(x-p,y-p,FW+p*2,FH+p*2,9); ctx.stroke();
-  }
-
-  // charge indicator ring (visible to both players as a warning)
-  const showCharge = f.chargeStart !== null || f.pendingChargeShot !== null;
-  if (showCharge){
-    const t = f.chargeStart !== null
-      ? Math.min(frameCount - f.chargeStart, CHARGE_FRAMES_MAX) / CHARGE_FRAMES_MAX
-      : f.pendingChargeShot;
-    const full = t >= 1.0;
-    ctx.save();
-    if (full){
-      // fully charged: bright pulsing gold ring — warns the opponent
-      const pulse = 0.75 + 0.25 * Math.sin(frameCount * 0.55);
-      ctx.strokeStyle = `rgba(255,220,55,${pulse})`;
-      ctx.lineWidth = 3;
-      ctx.shadowColor = "#ffd23f";
-      ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.arc(f.x, f.y, CHARGE_RING_R, 0, Math.PI*2); ctx.stroke();
-      // outer halo
-      ctx.strokeStyle = `rgba(255,200,30,${pulse * 0.35})`;
-      ctx.lineWidth = 7; ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.arc(f.x, f.y, CHARGE_RING_R + 5, 0, Math.PI*2); ctx.stroke();
-    } else {
-      // filling arc
-      ctx.strokeStyle = `rgba(255,160,20,${0.35 + 0.55*t})`;
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = "round";
-      if (f.pendingChargeShot !== null) ctx.setLineDash([3,4]);
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, CHARGE_RING_R, -Math.PI/2, -Math.PI/2 + t * Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.restore();
-  }
-}
-
-function drawHitboxes(f){
-  const x = f.x - FW/2, y = f.y - FH/2;
-  const safe = isInvuln(f);
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = safe ? "rgba(61,242,122,.95)" : "rgba(127,180,255,.9)";
-  ctx.setLineDash([4,3]);
-  ctx.strokeRect(x, y, FW, FH);
-  ctx.setLineDash([]);
-  ctx.font = "9px monospace"; ctx.textAlign = "center";
-  ctx.fillStyle = safe ? getCss("--invuln") : "#7fb4ff";
-  ctx.fillText(safe ? "INVULN" : "HURT", f.x, f.side==="bottom" ? y-4 : y+FH+11);
-}
-
-function drawBullet(b){
-  if (b.type === "beam"){
-    const flick = (frameCount % 4 < 2) ? 1 : 0.7;
-    const grd = ctx.createLinearGradient(b.x-BEAM_HW,0,b.x+BEAM_HW,0);
-    const c = (b.owner==="bottom") ? "33,230,193" : "255,61,139";
-    grd.addColorStop(0,`rgba(${c},0)`);
-    grd.addColorStop(.5,`rgba(${c},${0.85*flick})`);
-    grd.addColorStop(1,`rgba(${c},0)`);
-    ctx.fillStyle = grd;
-    ctx.fillRect(b.x-BEAM_HW, b.y-b.h/2, BEAM_HW*2, b.h);
-    ctx.fillStyle = `rgba(255,255,255,${0.6*flick})`;
-    ctx.fillRect(b.x-2, b.y-b.h/2, 4, b.h);
-    if (showHB){
-      ctx.strokeStyle = "rgba(255,75,62,.9)"; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
-      ctx.strokeRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h); ctx.setLineDash([]);
-    }
-    return;
-  }
-
-  // charged blast
-  if (b.variant === "charge"){
-    const t = b.chargeLevel;
-    const c = b.owner==="bottom" ? getCss("--p1") : getCss("--p2");
-    ctx.save();
-    ctx.shadowColor = c; ctx.shadowBlur = 10 + 22*t;
-    ctx.fillStyle = c;
-    roundRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h, 3 + t*5); ctx.fill();
-    // bright core
-    const coreW = Math.max(3, b.w * 0.4);
-    ctx.fillStyle = `rgba(255,255,255,${0.45 + 0.45*t})`;
-    roundRect(b.x-coreW/2, b.y-b.h/2+2, coreW, b.h-4, 3); ctx.fill();
-    ctx.restore();
-    if (showHB){
-      ctx.strokeStyle = "rgba(255,75,62,.95)"; ctx.lineWidth=1.2; ctx.setLineDash([4,2]);
-      ctx.strokeRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h); ctx.setLineDash([]);
-    }
-    return;
-  }
-
-  const c = (b.owner==="bottom") ? getCss("--p1") : getCss("--p2");
-  ctx.save();
-  ctx.shadowColor = b.parried ? "#fff" : c; ctx.shadowBlur = b.variant==="sniper" ? 18 : 12;
-  ctx.fillStyle = b.parried ? "#fff" : c;
-  roundRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h, 3); ctx.fill();
-  if (b.variant === "sniper"){
-    ctx.fillStyle = "rgba(255,255,255,.9)";
-    roundRect(b.x-1, b.y-b.h/2+2, 2, b.h-4, 1); ctx.fill();
-  }
-  ctx.restore();
-  if (showHB){
-    ctx.strokeStyle = "rgba(255,75,62,.95)"; ctx.lineWidth=1.2; ctx.setLineDash([4,2]);
-    ctx.strokeRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h); ctx.setLineDash([]);
-  }
-}
-
-function drawPowerups(){
-  for (const p of powerups){
-    const col = PU_COLORS[p.kind];
-    const r = PU_R;
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.shadowColor = col; ctx.shadowBlur = 16;
-    ctx.fillStyle = "rgba(8,11,18,.92)";
-    ctx.strokeStyle = col; ctx.lineWidth = 2;
-    roundRect(-r,-r, r*2, r*2, 6); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = col;
-    if (p.kind === "triple"){
-      for (const dx of [-6,0,6]){ roundRect(dx-1.5,-6,3,12,1.5); ctx.fill(); }
-    } else {
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0,0,5.5,0,Math.PI*2); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.moveTo(0,-9); ctx.lineTo(0,9); ctx.stroke();
-    }
-    ctx.restore();
-    if (showHB){
-      ctx.strokeStyle = "rgba(255,209,63,.9)"; ctx.lineWidth=1.2; ctx.setLineDash([4,2]);
-      ctx.strokeRect(p.x-r, p.y-r, r*2, r*2); ctx.setLineDash([]);
-    }
-  }
-}
-
-function drawHUD(){
-  function bar(x,y,w,hp,meter,color){
-    ctx.fillStyle = "rgba(255,255,255,.08)";
-    roundRect(x,y,w,7,3); ctx.fill();
-    ctx.fillStyle = color;
-    roundRect(x,y,w*(hp/HP_MAX),7,3); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.08)";
-    roundRect(x,y+10,w,4,2); ctx.fill();
-    const full = meter>=METER_MAX;
-    ctx.fillStyle = full ? "#ffe14d" : "rgba(255,255,255,.55)";
-    roundRect(x,y+10,w*(meter/METER_MAX),4,2); ctx.fill();
-    if (full){
-      ctx.fillStyle="#ffe14d"; ctx.font="bold 8px monospace"; ctx.textAlign="right";
-      ctx.fillText("BEAM READY", x+w, y+22);
-    }
-  }
-  bar(14, 12, W-28, opp.hp, opp.meter, getCss("--p2"));
-  bar(14, H-26, W-28, player.hp, player.meter, getCss("--p1"));
-  puBadge(player, W-16, H-40, "right");
-  puBadge(opp, W-16, 50, "right");
-}
-
-function puBadge(f, x, y, align){
-  let txt = null, col = "#5e6c85";
-  if (f.charges){
-    const k = f.charges.kind;
-    txt = (k==="triple" ? "TRIPLE" : "SNIPER") + " ×" + f.charges.count + " ▸FIRE";
-    col = PU_COLORS[k];
-  } else if (f.stored){
-    txt = "▣ " + (f.stored==="triple" ? "TRIPLE" : "SNIPER") + (f.isCPU ? "" : " ·press K");
-    col = PU_COLORS[f.stored];
-  }
-  if (!txt) return;
-  ctx.font = "bold 9px monospace"; ctx.textAlign = align; ctx.fillStyle = col;
-  ctx.fillText(txt, x, y);
-}
-
-function stateLabel(f){
-  if (f.hitstun>0) return `HITSTUN ${f.hitstun}`;
-  if (!f.action) return "NEUTRAL";
-  const m = f.action.data, ph = phaseOf(f).toUpperCase();
-  return `${f.action.move.toUpperCase()} · ${ph} ${f.action.frame+1}/${total(m)}`;
-}
-
-function drawTelemetry(){
-  ctx.textAlign = "left"; ctx.font = "10px monospace";
-  ctx.fillStyle = getCss("--p2");
-  ctx.fillText(`P2 ${stateLabel(opp)}`, 16, 40);
-  if (adrenalineMult(opp) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡${(adrenalineMult(opp)).toFixed(2)}x`, 16, 53); }
-  if (opp.combo>1){ ctx.fillStyle="#ffd23f"; ctx.fillText(`${opp.combo} COMBO`, W-70, 40); }
-  ctx.fillStyle = getCss("--p1");
-  ctx.fillText(`P1 ${stateLabel(player)}`, 16, H-32);
-  if (adrenalineMult(player) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡ ADRENALINE ${(adrenalineMult(player)).toFixed(2)}x`, 16, H-19); }
-  if (player.combo>1){ ctx.fillStyle="#ffd23f"; ctx.textAlign="right"; ctx.fillText(`${player.combo} COMBO`, W-16, H-32); ctx.textAlign="left"; }
-  if (mode==="training"){
-    ctx.fillStyle = "#5e6c85"; ctx.textAlign="center";
-    ctx.fillText(`FRAME ${frameCount}`, W/2, 40);
-  }
-}
-
-function drawBackground(){
-  ctx.fillStyle = "#04060b"; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle = "rgba(50,70,110,.16)"; ctx.lineWidth = 1;
-  for (let x=0;x<=W;x+=22){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y=0;y<=H;y+=22){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-  ctx.strokeStyle = "rgba(120,140,180,.18)"; ctx.setLineDash([8,8]);
-  ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke(); ctx.setLineDash([]);
-  const g1 = ctx.createLinearGradient(0,H,0,H-150);
-  g1.addColorStop(0,"rgba(33,230,193,.07)"); g1.addColorStop(1,"rgba(33,230,193,0)");
-  ctx.fillStyle=g1; ctx.fillRect(0,H-150,W,150);
-  const g2 = ctx.createLinearGradient(0,0,0,150);
-  g2.addColorStop(0,"rgba(255,61,139,.07)"); g2.addColorStop(1,"rgba(255,61,139,0)");
-  ctx.fillStyle=g2; ctx.fillRect(0,0,W,150);
-}
-
-function render(){
-  ctx.save();
-  if (shake > 0.4){ ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake); }
-  drawBackground();
-  for (const b of bullets) drawBullet(b);
-  drawPowerups();
-  drawFighter(opp);
-  drawFighter(player);
-  if (showHB){ drawHitboxes(opp); drawHitboxes(player); }
-  drawHUD();
-  drawTelemetry();
-  ctx.restore();
-
-  if (hitFlash > 0){
-    ctx.fillStyle = `rgba(255,255,255,${0.06*hitFlash})`;
-    ctx.fillRect(0,0,W,H); hitFlash -= 0.6;
-  }
-
-  if (paused && !winner){
-    ctx.fillStyle = "rgba(4,6,11,.55)"; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle = "#ffd23f"; ctx.textAlign="center"; ctx.font="bold 18px monospace";
-    ctx.fillText("⏸ PAUSED", W/2, H/2-10);
-    ctx.fillStyle="#c9d4e8"; ctx.font="11px monospace";
-    ctx.fillText("press  .  to step one frame", W/2, H/2+14);
-  }
-
-  if (winner){
-    ctx.fillStyle = "rgba(4,6,11,.7)"; ctx.fillRect(0,0,W,H);
-    ctx.textAlign="center";
-    const win = winner==="bottom";
-    ctx.fillStyle = win ? getCss("--p1") : getCss("--p2");
-    ctx.font="bold 26px monospace";
-    ctx.fillText(win ? "YOU WIN" : "K.O. — CPU WINS", W/2, H/2-6);
-    ctx.fillStyle="#c9d4e8"; ctx.font="12px monospace";
-    ctx.fillText("press  R  to reset", W/2, H/2+22);
-  }
-}
-
-/* ───────────────────────────── loop ──────────────────────────────── */
-let acc = 0, last = performance.now();
-function frame(now){
-  requestAnimationFrame(frame);
-  const dt = now - last; last = now;
-  if (!paused){
-    acc += dt; let steps = 0;
-    while (acc >= STEP && steps < 5){ logicStep(); acc -= STEP; steps++; }
-    if (acc > STEP*5) acc = 0;
-  } else if (stepOnce){
-    logicStep(); stepOnce = false;
-  }
-  render();
-}
-
-/* ───────────────────────────── UI wiring ─────────────────────────── */
-const $ = id => document.getElementById(id);
-function syncButtons(){
-  $("mVersus").classList.toggle("active", mode==="versus");
-  $("mTrain").classList.toggle("active", mode==="training");
-  $("trainCard").style.display = mode==="training" ? "" : "none";
-  $("hitbox").classList.toggle("active", showHB);
-  $("sound").classList.toggle("active", sound);
-  $("pause").textContent = paused ? "▶ Resume (P)" : "⏸ Pause (P)";
-}
-function setMode(m){
-  mode = m;
-  showHB = (m === "training");
-  reset();
-}
-function toggleHB(){ showHB = !showHB; syncButtons(); }
-function togglePause(){ paused = !paused; syncButtons(); }
-
-$("mVersus").onclick = () => setMode("versus");
-$("mTrain").onclick  = () => setMode("training");
-$("reset").onclick   = () => reset();
-$("pause").onclick   = () => togglePause();
-$("step").onclick    = () => { paused = true; stepOnce = true; syncButtons(); };
-$("hitbox").onclick  = () => toggleHB();
-$("sound").onclick   = () => { sound = !sound; if (sound && !actx) beep(800,.03); syncButtons(); };
-$("diff").onchange = e => {
-  const v = e.target.value;
-  cpuExpert = false;
-  if (v==="easy"){   reactionDelay=18; parryChance=0.02; cpuAggro=0.45; }
-  else if (v==="hard"){   reactionDelay=7;  parryChance=0.12; cpuAggro=0.8; }
-  else if (v==="expert"){ reactionDelay=3;  parryChance=0.88; cpuAggro=0.95; cpuExpert=true; }
-  else {                  reactionDelay=12; parryChance=0.05; cpuAggro=0.6; }
-};
-$("dummy").onchange = e => { dummyMode = e.target.value; };
-$("cpuStyle").onchange = e => { cpuStyle = e.target.value; };
-
-reset();
-requestAnimationFrame(frame);
-})();
-</script>
+  <!-- ════════════════════ SETTINGS ════════════════════ -->
+  <div id="settings" class="screen" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>SETTINGS</h2>
+        <span class="spacer"></span>
+        <button class="back-btn" id="settingsBack">‹ Back</button>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h3>Sound</h3>
+        <div class="set-row">
+          <div class="lab"><b>Sound effects</b><small>Shots, hits, parries &amp; beams</small></div>
+          <label class="switch"><input type="checkbox" id="setSound" checked><span class="track"><span class="thumb"></span></span></label>
+        </div>
+        <div class="set-row">
+          <div class="lab"><b>Volume</b><small>Master effect volume</small></div>
+          <input type="range" id="setVolume" min="0" max="100" value="100">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Controls — click a key, then press a new one</h3>
+        <div class="rebind-grid" id="rebindGrid"><!-- filled by JS --></div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button id="resetBinds">↺ Reset to defaults</button>
+        </div>
+        <div class="hint" style="text-align:left; margin-top:12px">
+          <b>Always available (not rebindable):</b>
+        </div>
+        <div class="fixed-keys">
+          <kbd>R</kbd><span>Reset match</span>
+          <kbd>P</kbd><span>Pause (training)</span>
+          <kbd>.</kbd><span>Step one frame (training)</span>
+          <kbd>H</kbd><span>Toggle hitboxes (training)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ GAME ════════════════════ -->
+  <div id="gameScreen" class="screen" hidden>
+    <div class="title">VERTICAL&nbsp;FRAME&nbsp;FIGHTER</div>
+    <div class="sub" id="gameSub">VERSUS CPU · 60 FPS · FRAME-PERFECT</div>
+
+    <div class="wrap">
+      <div class="stage">
+        <canvas id="game" width="440" height="680"></canvas>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h3>Match</h3>
+          <div class="btnrow" style="margin-bottom:8px">
+            <button id="toMenu">‹ Menu</button>
+            <button id="reset">↻ Reset (R)</button>
+            <button id="sound" class="active">🔊 Sound</button>
+          </div>
+        </div>
+
+        <div class="card" id="trainCard" style="display:none">
+          <h3>Training Lab</h3>
+          <div class="btnrow" style="margin-bottom:8px">
+            <button id="pause">⏸ Pause (P)</button>
+            <button id="step">⏭ Step (.)</button>
+          </div>
+          <div class="btnrow" style="margin-bottom:8px">
+            <button id="hitbox" class="active">▦ Hitboxes (H)</button>
+          </div>
+          <div class="row-sb">
+            <span class="tag">Dummy</span>
+            <select id="dummy">
+              <option value="cpu" selected>Full CPU (uses difficulty)</option>
+              <option value="stand">Stand still</option>
+              <option value="fire">Auto-fire (~1.1s)</option>
+              <option value="track">Track + fire</option>
+            </select>
+          </div>
+          <div class="hint" style="text-align:left;margin-top:9px">
+            Pause, then tap <kbd>.</kbd> to advance one frame and watch every box.
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Controls</h3>
+          <div class="keys" id="liveControls"><!-- filled by JS, reflects current bindings --></div>
+          <div class="hint" style="text-align:left">Numbers are <b>startup / active / recovery</b> frames. Change keys in Settings.</div>
+        </div>
+
+        <div class="card">
+          <h3>Hitbox Legend</h3>
+          <div class="legend">
+            <div class="row"><span class="sw" style="background:var(--startup)"></span> Startup — committed, vulnerable</div>
+            <div class="row"><span class="sw" style="background:var(--active)"></span> Active — the hit exists now</div>
+            <div class="row"><span class="sw" style="background:var(--recovery)"></span> Recovery — can't act yet</div>
+            <div class="row"><span class="sw" style="background:var(--invuln)"></span> Invincible — dash i-frames</div>
+            <div class="row"><span class="sw" style="background:#7fb4ff"></span> Hurtbox — can be hit here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hint">Click the stage to capture keyboard focus. Beam can't be parried — only dash i-frames pass through it.</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

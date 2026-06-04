@@ -1,0 +1,222 @@
+/* ============================================================================
+ * styles.css — full-screen layout, UI overlays, and the three screens
+ * (landing / settings / game). Handles canvas sizing context, the etheral
+ * shadow background host, and the menu → match transition.
+ * ==========================================================================*/
+
+:root{
+  --bg:#07090f;
+  --panel:#0d1019;
+  --line:#1b2233;
+  --p1:#21e6c1;      /* player cyan */
+  --p1dim:#0e6b5d;
+  --p2:#ff3d8b;      /* opponent magenta */
+  --p2dim:#7a1740;
+  --startup:#ffcf3f; /* yellow */
+  --active:#ff4b3e;  /* red */
+  --recovery:#9b6bff;/* purple */
+  --invuln:#3df27a;  /* green */
+  --hit:#ffffff;
+  --ink:#c9d4e8;
+  --ink-dim:#5e6c85;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #11182b 0%, transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:"DejaVu Sans Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  display:flex; flex-direction:column; align-items:center;
+  min-height:100%;
+  padding:14px 12px 28px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* etheral-shadow ambient background, behind all content */
+#bgfx{
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  opacity:.5;
+  /* fade the wisps out toward the edges so UI text stays legible */
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 100%);
+  mask-image:radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 100%);
+}
+
+.title{
+  font-weight:800; letter-spacing:.32em; font-size:clamp(15px,2.4vw,22px);
+  margin:2px 0 2px; text-align:center;
+  background:linear-gradient(90deg,var(--p1),#fff 40%,var(--p2));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 22px rgba(33,230,193,.15);
+}
+.sub{color:var(--ink-dim); font-size:11px; letter-spacing:.22em; margin-bottom:10px; text-align:center}
+.wrap{
+  display:flex; gap:18px; align-items:flex-start; justify-content:center;
+  flex-wrap:wrap; width:100%; max-width:980px;
+}
+.stage{
+  position:relative;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#04060b;
+  box-shadow:0 0 0 1px #000 inset, 0 18px 60px rgba(0,0,0,.6), 0 0 60px rgba(33,230,193,.06);
+  overflow:hidden;
+}
+canvas{display:block; touch-action:none; image-rendering:pixelated}
+.side{
+  width:280px; min-width:240px; flex:1 1 240px; max-width:320px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.card{
+  border:1px solid var(--line); border-radius:9px; background:var(--panel);
+  padding:12px 13px;
+}
+.card h3{
+  margin:0 0 9px; font-size:11px; letter-spacing:.24em; color:var(--ink-dim);
+  text-transform:uppercase; font-weight:700;
+}
+.btnrow{display:flex; gap:7px; flex-wrap:wrap}
+button{
+  font-family:inherit; cursor:pointer; color:var(--ink);
+  background:#121728; border:1px solid var(--line); border-radius:7px;
+  padding:8px 11px; font-size:12px; letter-spacing:.08em; transition:.12s;
+  flex:1 1 auto; white-space:nowrap;
+}
+button:hover{border-color:#33405d; background:#172036}
+button.active{border-color:var(--p1); color:#eafffb; background:#0f2a27; box-shadow:0 0 0 1px var(--p1) inset}
+button.warn.active{border-color:var(--startup); color:#fff7df; background:#2a2410; box-shadow:0 0 0 1px var(--startup) inset}
+.keys{display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:12px; line-height:1.5}
+kbd{
+  display:inline-block; min-width:20px; text-align:center;
+  background:#0a0e17; border:1px solid #2a3550; border-bottom-width:2px;
+  border-radius:5px; padding:1px 6px; font-size:11px; color:#e7eefc;
+}
+.legend{display:flex; flex-direction:column; gap:6px; font-size:12px}
+.legend .row{display:flex; align-items:center; gap:9px}
+.sw{width:14px; height:14px; border-radius:3px; flex:none; border:1px solid rgba(255,255,255,.15)}
+.fd{font-size:11px; line-height:1.65; color:var(--ink-dim)}
+.fd b{color:var(--ink)}
+.fd .g{color:var(--invuln)} .fd .y{color:var(--startup)} .fd .r{color:var(--active)} .fd .p{color:var(--recovery)}
+.hint{color:var(--ink-dim); font-size:11px; margin-top:8px; text-align:center; letter-spacing:.04em}
+select{
+  font-family:inherit; background:#121728; color:var(--ink); border:1px solid var(--line);
+  border-radius:7px; padding:7px 8px; font-size:12px; flex:1 1 auto;
+}
+.row-sb{display:flex; align-items:center; gap:8px}
+.tag{font-size:10px; letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase}
+@media (max-width:720px){
+  .side{max-width:none; width:100%}
+  .wrap{flex-direction:column; align-items:center}
+}
+
+/* ───────────────────────────── screens ───────────────────────────── */
+.screen{ width:100%; display:flex; flex-direction:column; align-items:center; }
+[hidden]{ display:none !important; }
+
+/* every screen fades/slides in when shown — smooths menu ↔ settings ↔ game */
+@keyframes screenIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.screen:not([hidden]){ animation:screenIn .42s ease both; }
+
+/* ── landing / menu ── */
+.menu{ max-width:780px; width:100%; padding:6px 14px 50px; }
+.hero{ text-align:center; margin:34px 0 30px; position:relative; }
+.bigtitle{
+  font-weight:800; letter-spacing:.28em; line-height:1.05;
+  font-size:clamp(30px,7vw,58px); margin:0;
+  background:linear-gradient(90deg,var(--p1),#fff 45%,var(--p2));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 40px rgba(33,230,193,.18);
+}
+.herotag{ color:var(--ink-dim); font-size:12px; letter-spacing:.26em; margin-top:14px; }
+
+.section-label{
+  font-size:11px; letter-spacing:.26em; color:var(--ink-dim);
+  text-transform:uppercase; font-weight:700; text-align:center; margin:0 0 12px;
+}
+
+/* difficulty + style pills */
+.pills{ display:flex; gap:9px; flex-wrap:wrap; justify-content:center; }
+.pill{
+  font-family:inherit; cursor:pointer; color:var(--ink);
+  background:#121728; border:1px solid var(--line); border-radius:9px;
+  padding:10px 16px; font-size:12px; letter-spacing:.06em; transition:.12s;
+  display:flex; flex-direction:column; align-items:center; gap:3px; min-width:92px;
+}
+.pill small{ color:var(--ink-dim); font-size:10px; letter-spacing:.02em; font-weight:400; }
+.pill:hover{ border-color:#33405d; background:#172036; }
+.pill.active{ border-color:var(--p1); color:#eafffb; background:#0f2a27; box-shadow:0 0 0 1px var(--p1) inset; }
+.pill.active small{ color:#9fe9dd; }
+
+/* big primary action buttons */
+.play-actions{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:6px 0 14px; }
+.bigbtn{
+  font-family:inherit; cursor:pointer; color:var(--ink);
+  background:linear-gradient(180deg, rgba(20,27,46,.85), rgba(13,16,25,.85));
+  backdrop-filter:blur(2px);
+  border:1px solid var(--line); border-radius:13px;
+  padding:22px 18px; transition:.14s; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.bigbtn .ico{ font-size:30px; line-height:1; }
+.bigbtn .lbl{ font-size:16px; letter-spacing:.14em; font-weight:700; }
+.bigbtn .dsc{ font-size:11px; color:var(--ink-dim); letter-spacing:.04em; }
+.bigbtn:hover{ transform:translateY(-2px); }
+.bigbtn.versus:hover{ border-color:var(--p1); box-shadow:0 10px 30px rgba(33,230,193,.14), 0 0 0 1px var(--p1) inset; }
+.bigbtn.train:hover{ border-color:var(--startup); box-shadow:0 10px 30px rgba(255,207,63,.12), 0 0 0 1px var(--startup) inset; }
+
+.menu-sec{ margin:26px 0 0; }
+.minor-actions{ display:flex; gap:10px; justify-content:center; margin-top:8px; }
+.minor-actions button{ flex:0 1 200px; padding:11px 14px; font-size:12px; letter-spacing:.1em; }
+
+/* ── how to play grid ── */
+.howto{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:14px; }
+.howto .card h3{ display:flex; align-items:center; gap:7px; }
+.howto .card h3 .hi{ font-size:14px; }
+
+/* ── settings ── */
+.panel{ max-width:620px; width:100%; padding:6px 14px 50px; }
+.panel-head{ display:flex; align-items:center; gap:12px; margin:18px 0 22px; }
+.panel-head h2{ margin:0; font-size:20px; letter-spacing:.18em; font-weight:800; }
+.panel-head .spacer{ flex:1; }
+.back-btn{ flex:0 0 auto; padding:9px 14px; font-size:12px; letter-spacing:.1em; }
+
+.set-row{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); }
+.set-row:last-child{ border-bottom:none; }
+.set-row .lab{ flex:1; }
+.set-row .lab b{ display:block; font-size:13px; color:var(--ink); letter-spacing:.04em; }
+.set-row .lab small{ color:var(--ink-dim); font-size:11px; }
+input[type=range]{ accent-color:var(--p1); flex:0 0 150px; }
+
+/* toggle switch */
+.switch{ position:relative; width:46px; height:24px; flex:0 0 auto; cursor:pointer; }
+.switch input{ display:none; }
+.switch .track{ position:absolute; inset:0; background:#1a2236; border:1px solid var(--line); border-radius:999px; transition:.15s; }
+.switch .thumb{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#5e6c85; transition:.15s; }
+.switch input:checked + .track{ background:#0f2a27; border-color:var(--p1); }
+.switch input:checked + .track .thumb{ left:24px; background:var(--p1); }
+
+/* control rebind grid */
+.rebind-grid{ display:grid; grid-template-columns:1fr auto; gap:0 16px; align-items:center; }
+.rebind-grid .rb-row{ display:contents; }
+.rb-name{ padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink); }
+.rb-name small{ display:block; color:var(--ink-dim); font-size:10px; letter-spacing:.02em; }
+.rb-key{ padding:8px 0; border-bottom:1px solid var(--line); text-align:right; }
+.rebind-grid .rb-row:last-child .rb-name,
+.rebind-grid .rb-row:last-child .rb-key{ border-bottom:none; }
+.keycap{
+  font-family:inherit; cursor:pointer; min-width:64px; text-align:center;
+  background:#0a0e17; border:1px solid #2a3550; border-bottom-width:2px;
+  border-radius:6px; padding:7px 12px; font-size:12px; color:#e7eefc; letter-spacing:.04em; transition:.12s;
+}
+.keycap:hover{ border-color:var(--p1); }
+.keycap.listening{ border-color:var(--startup); color:var(--startup); background:#2a2410; animation:blink 1s steps(2) infinite; }
+@keyframes blink{ 50%{ opacity:.4; } }
+.fixed-keys{ display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:12px; margin-top:6px; }
+
+@media (max-width:560px){
+  .play-actions{ grid-template-columns:1fr; }
+  .minor-actions{ flex-direction:column; }
+  .minor-actions button{ flex:1 1 auto; }
+}
