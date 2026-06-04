@@ -933,11 +933,11 @@ function drawTelemetry(){
   ctx.textAlign = "left"; ctx.font = "10px monospace";
   ctx.fillStyle = getCss("--p2");
   ctx.fillText(`P2 ${stateLabel(opp)}`, 16, 40);
-  if (adrenalineMult(opp) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡${(adrenalineMult(opp)).toFixed(2)}x`, 16, 53); }
+  if (adrenalineMult(opp) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`${(adrenalineMult(opp)).toFixed(2)}x`, 16, 53); }
   if (opp.combo>1){ ctx.fillStyle="#ffd23f"; ctx.fillText(`${opp.combo} COMBO`, W-70, 40); }
   ctx.fillStyle = getCss("--p1");
   ctx.fillText(`P1 ${stateLabel(player)}`, 16, H-32);
-  if (adrenalineMult(player) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`⚡ ADRENALINE ${(adrenalineMult(player)).toFixed(2)}x`, 16, H-19); }
+  if (adrenalineMult(player) > 1){ ctx.fillStyle="#ff5b5b"; ctx.fillText(`ADRENALINE ${(adrenalineMult(player)).toFixed(2)}x`, 16, H-19); }
   if (player.combo>1){ ctx.fillStyle="#ffd23f"; ctx.textAlign="right"; ctx.fillText(`${player.combo} COMBO`, W-16, H-32); ctx.textAlign="left"; }
   if (mode==="training"){
     ctx.fillStyle = "#5e6c85"; ctx.textAlign="center";
@@ -1029,7 +1029,7 @@ function render(){
   if (paused && !winner){
     ctx.fillStyle = "rgba(4,6,11,.55)"; ctx.fillRect(0,0,W,H);
     ctx.fillStyle = "#ffd23f"; ctx.textAlign="center"; ctx.font="bold 18px monospace";
-    ctx.fillText("⏸ PAUSED", W/2, H/2-10);
+    ctx.fillText("PAUSED", W/2, H/2-10);
     ctx.fillStyle="#c9d4e8"; ctx.font="11px monospace";
     ctx.fillText("press  .  to step one frame", W/2, H/2+14);
   }
@@ -1081,7 +1081,7 @@ function syncButtons(){
   const tc = $("trainCard"); if (tc) tc.style.display = mode==="training" ? "" : "none";
   const hb = $("hitbox");    if (hb) hb.classList.toggle("active", showHB);
   const sn = $("sound");     if (sn) sn.classList.toggle("active", isSoundOn());
-  const pz = $("pause");     if (pz) pz.textContent = paused ? "▶ Resume (P)" : "⏸ Pause (P)";
+  const pz = $("pause");     if (pz) pz.textContent = paused ? "Resume (P)" : "Pause (P)";
 }
 function toggleHB(){ showHB = !showHB; syncButtons(); }
 function togglePause(){ if (activeScreen!=="game" || introMs>0) return; paused = !paused; syncButtons(); }

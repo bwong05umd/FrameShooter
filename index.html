@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>VERTICAL FRAME FIGHTER</title>
+<title>Downpour</title>
 <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
   <div id="menu" class="screen">
     <div class="menu">
       <div class="hero">
-        <h1 class="bigtitle">VERTICAL<br>FRAME&nbsp;FIGHTER</h1>
+        <h1 class="bigtitle">Downpour</h1>
         <div class="herotag">A SHOOTING GALLERY WITH A FIGHTING-GAME SKELETON · 60 FPS</div>
       </div>
 
@@ -22,14 +22,12 @@
         <button class="bigbtn versus" id="playVersus">
           <span class="glow"></span>
           <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-          <span class="ico">⚔</span>
           <span class="lbl">VERSUS&nbsp;CPU</span>
           <span class="dsc">Fight the bot at your chosen difficulty</span>
         </button>
         <button class="bigbtn train" id="playTrain">
           <span class="glow"></span>
           <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-          <span class="ico">🔬</span>
           <span class="lbl">TRAINING</span>
           <span class="dsc">Hitboxes, frame-step &amp; practice dummies</span>
         </button>
@@ -38,10 +36,10 @@
       <div class="menu-sec">
         <p class="section-label">CPU Difficulty</p>
         <div class="pills" id="diffPills">
-          <button class="pill" data-diff="easy">Easy<small>slow · rarely dodges</small></button>
-          <button class="pill active" data-diff="normal">Normal<small>beatable</small></button>
-          <button class="pill" data-diff="hard">Hard<small>sharp parry + charge</small></button>
-          <button class="pill" data-diff="expert">Expert<small>near-perfect</small></button>
+          <button class="pill" data-diff="easy">Easy</button>
+          <button class="pill active" data-diff="normal">Normal</button>
+          <button class="pill" data-diff="hard">Hard</button>
+          <button class="pill" data-diff="expert">Expert</button>
         </div>
       </div>
 
@@ -55,8 +53,8 @@
 
       <div class="menu-sec">
         <div class="minor-actions">
-          <button id="openSettings">⚙ Settings</button>
-          <button id="openHowto">❓ How to Play</button>
+          <button id="openSettings">Settings</button>
+          <button id="openHowto">How to Play</button>
         </div>
       </div>
 
@@ -65,7 +63,7 @@
         <p class="section-label">How to Play</p>
         <div class="howto">
           <div class="card">
-            <h3><span class="hi">🎮</span> Controls</h3>
+            <h3>Controls</h3>
             <div class="keys">
               <span><kbd>A</kbd>/<kbd>D</kbd> · <kbd>◄</kbd><kbd>►</kbd></span><span>Shuffle left / right</span>
               <span><kbd>J</kbd></span><span>Fire — 3 / 3 / 8 frames</span>
@@ -79,7 +77,7 @@
           </div>
 
           <div class="card">
-            <h3><span class="hi">⚡</span> Mechanics</h3>
+            <h3>Mechanics</h3>
             <div class="fd">
               <b style="color:#ffd23f">Charge:</b> hold <kbd>Space</kbd>, release to fire — bigger &amp; harder the longer you hold (gold ring = full, 2s). You can't move while charging; tap a direction to <b>bank</b> the charge (dashed ring) for your next <kbd>Space</kbd>. Getting hit won't cancel it.
               <br><br><b style="color:#ff5b5b">Adrenaline:</b> below 45% HP your speed &amp; fire rate ramp up to <b>1.5×</b> near death — a comeback window.
@@ -88,7 +86,7 @@
           </div>
 
           <div class="card">
-            <h3><span class="hi">🎁</span> Power-ups</h3>
+            <h3>Power-ups</h3>
             <div class="legend">
               <div class="row"><span class="sw" style="background:#ff9f1c"></span> <b>Triple</b> — 3 parallel shots, fires 2×</div>
               <div class="row"><span class="sw" style="background:#cfe3ff"></span> <b>Sniper</b> — slim, fast, lethal, fires 1×</div>
@@ -97,7 +95,7 @@
           </div>
 
           <div class="card">
-            <h3><span class="hi">▦</span> Hitbox Legend</h3>
+            <h3>Hitbox Legend</h3>
             <div class="legend">
               <div class="row"><span class="sw" style="background:var(--startup)"></span> Startup — committed, vulnerable</div>
               <div class="row"><span class="sw" style="background:var(--active)"></span> Active — the hit exists now</div>
@@ -154,7 +152,7 @@
 
   <!-- ════════════════════ GAME ════════════════════ -->
   <div id="gameScreen" class="screen" hidden>
-    <div class="title">VERTICAL&nbsp;FRAME&nbsp;FIGHTER</div>
+    <div class="title">Downpour</div>
     <div class="sub" id="gameSub">VERSUS CPU · 60 FPS · FRAME-PERFECT</div>
 
     <div class="wrap">
@@ -166,20 +164,20 @@
         <div class="card">
           <h3>Match</h3>
           <div class="btnrow" style="margin-bottom:8px">
-            <button id="toMenu">‹ Menu</button>
-            <button id="reset">↻ Reset (R)</button>
-            <button id="sound" class="active">🔊 Sound</button>
+            <button id="toMenu">Menu</button>
+            <button id="reset">Reset (R)</button>
+            <button id="sound" class="active">Sound</button>
           </div>
         </div>
 
         <div class="card" id="trainCard" style="display:none">
           <h3>Training Lab</h3>
           <div class="btnrow" style="margin-bottom:8px">
-            <button id="pause">⏸ Pause (P)</button>
-            <button id="step">⏭ Step (.)</button>
+            <button id="pause">Pause (P)</button>
+            <button id="step">Step (.)</button>
           </div>
           <div class="btnrow" style="margin-bottom:8px">
-            <button id="hitbox" class="active">▦ Hitboxes (H)</button>
+            <button id="hitbox" class="active">Hitboxes (H)</button>
           </div>
           <div class="row-sb">
             <span class="tag">Dummy</span>
